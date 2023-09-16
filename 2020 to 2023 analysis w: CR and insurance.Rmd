@@ -36,6 +36,7 @@ cn_visit_pull <-clean_names(visit_pull)
 cn_visit_pull <- cn_visit_pull %>% rename(pat_enc_csn_id = pat_enc_csn_id_1) %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id))
 cn_chart_review <-clean_names(chart_review)
 cn_chart_review <- cn_chart_review %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id))
+cn_chart_review <- cn_chart_review %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id)) %>% rename(age_of_assailant_cat = age_of_assailant) %>% rename(assailant_age = x25)
 cn_insurance <-clean_names(insurance)
 #optional removing of old DF
 rm(chart_review,visit_pull,insurance,path)
