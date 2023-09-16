@@ -1,0 +1,230 @@
+---
+title: "2020 to 2023 analysis w/ CR and insurance"
+output: html_notebook
+---
+## Setup
+Code to load packages
+```{r}
+#packages
+library(tidyverse)
+library(readxl)
+library(readr)
+library(parsedate)
+library(janitor)
+library(lubridate)
+library(labelled)
+library(overviewR)
+```
+
+Code to load data
+```{r}
+library(readxl)
+visit_pull <- read_excel("C_F_AllPatients_2020to2023.xlsx", na = c(" ", "", "NA")) %>%  as_tibble()
+chart_review <- read_excel("C_F_AdultChartReview_2020to2022.xlsx",  na = c(" ", "", "NA")) %>% as_tibble()
+path <- "C_F_All_Insurance_Pull.xlsx"
+insurance <-path |>
+excel_sheets() |>
+set_names() |> map(read_excel, path = path) |> list_rbind() |> as_tibble()
+```
+visit_pull has 942 obs of 192 variables
+chart_review has 691 obs of 36 variables
+insurance has 415 obs of 25 variables
+cleaning names:
+```{r}
+#name cleaning
+cn_visit_pull <-clean_names(visit_pull)
+cn_visit_pull <- cn_visit_pull %>% rename(pat_enc_csn_id = pat_enc_csn_id_1) %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id))
+cn_chart_review <-clean_names(chart_review)
+cn_chart_review <- cn_chart_review %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id))
+cn_insurance <-clean_names(insurance)
+#optional removing of old DF
+rm(chart_review,visit_pull,insurance,path)
+```
+reformatting before join
+```{r}
+origin <- "1904-01-01"
+# set TZ to east coast standard
+time_zone <- "America/New_York"
+#pathway went live on 7/13/21
+pathway_start <- mdy("7/13/21", tz = time_zone)
+#Story board notification went live on 9/8/21
+sb_start <- mdy("9/8/21", tz = time_zone)
+# Date CDC put out new STI tx guidelines
+CDC_STI_date <- mdy("7/23/2021", tz = time_zone)
+rf_visit_pull <- cn_visit_pull %>% mutate(
+  arrive_dt = as_datetime(ed_arrival_time, tz = time_zone),
+  ed_arrival_date = as_date(ed_arrival_date),
+  wtf_departure_dt = as_datetime(ed_departure_time, tz = time_zone),
+  # don't use this one for now. Altered by obs/psych/admit pts?
+  dispo_dt = as_datetime(ed_disposition_time, tz = time_zone),
+  avs_dt = as_datetime(ed_avs_printed_ts, tz = time_zone),
+  pt_seen_dt = as_datetime(seen_by_provider_ts, tz = time_zone),
+  ed_depart_dt = as_datetime(ed_depart_ts, tz = time_zone),
+  #departure TS seems to be the one that is earlier,  departure_time usually later (affected by obs/admit?)
+  patient_birth_date = as_date(patient_birth_date, tz = time_zone)
+) %>%
+  mutate(exposure.num = case_when(arrive_dt < pathway_start ~ 0,
+                                  arrive_dt > sb_start ~ 1,
+                                  .default = NA)) %>%
+  mutate(between = case_when(arrive_dt >= pathway_start &
+                               arrive_dt <= sb_start ~ 1,
+                             .default = 0)) %>%
+  mutate(
+    exposure.char = case_when(
+      exposure.num == 0 ~ "pre intervention",
+      exposure.num == 1 ~ "post intervention",
+      between == 1 ~ "between period",
+      .default = NA
+    )
+  ) %>%
+  mutate(
+    ed_disposition = factor(ed_disposition, ordered = FALSE),
+    exposure.char = factor(
+      exposure.char,
+      ordered = FALSE,
+      levels = c("pre intervention", "between period", "post intervention")
+    ),
+    pathway = factor(agile_md_used_yn, exclude = NULL),
+    patient_birth_date = as_date(patient_birth_date)
+  ) %>%
+  add_count(mrn) %>%
+  rename(num_visits = n) %>%
+  dplyr::mutate(
+    repeater = case_when(num_visits > 1 ~ TRUE,
+                         num_visits == 1 ~ FALSE,
+                         .default = FALSE),
+    race = factor(patient_race, ordered = FALSE),
+    age_group = factor(
+      age_group,
+      levels = c(
+        "0-12 yrs",
+        "13-16 yrs",
+        "17-19 yrs",
+        "20-29 yrs",
+        "30-39 yrs",
+        "40-49 yrs",
+        "50-59 yrs",
+        "60-69 yrs",
+        "70-79 yrs",
+        "80-89 yrs",
+        "90-99 yrs"
+      ),
+      ordered = TRUE
+    ),
+    minor = case_when(age < 18 ~ 1,
+                      age >= 18 ~ 0),
+    intervention = factor(exposure.char)
+  ) %>%
+  dplyr::mutate(
+    race_bwo = case_when(
+      race == "White" ~ "White",
+      race == "Black or African American" ~ "Black",
+      race != c("White", "Black or African American") ~ "Other"
+    ),
+    female = case_when(gender == "Female" ~ 1,
+                       gender == "Male" ~ 0),
+    age_3_group = case_when(age < 18 ~ "< 18",
+                            age >= 18 & age < 55 ~ "18 - 55",
+                            age >= 55 ~ "55+")
+  ) %>%
+  dplyr::mutate(
+    female_u55 = ifelse(age < 55 & female == 1, 1, 0),
+    white = ifelse(race_bwo == "White", 1, 0),
+    black = ifelse(race_bwo == "Black", 1, 0),
+    other = ifelse(race_bwo == "Other", 1, 0)
+  )
+
+levels(rf_visit_pull$pathway) <-
+  list("Didn't Use Pathway" = "N", "Used Pathway" = "Y")
+# need to also reformat cn_chart_review ed arrival date to get same format
+cn_chart_review <- cn_chart_review %>% 
+  mutate(ed_arrival_date = as_date(ed_arrival_date))
+
+```
+
+#Joining datasets, excluding patients
+```{r}
+
+minors <- rf_visit_pull %>% filter(age < 18)
+adult_visit_pull <- rf_visit_pull %>% filter(age >= 18) %>%  mutate(ed_arrival_date = date(arrive_dt))
+
+DF1 <- left_join(adult_visit_pull, cn_chart_review, by = join_by(pat_enc_csn_id == pat_enc_csn_id, ed_arrival_date == ed_arrival_date))
+s_insurance <- cn_insurance %>% select(pat_enc_csn_id, age, primary_coverage_payor_name, primary_coverage_benefit_plan_name, ed_arrival_year, ed_arrival_month) %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id))
+
+DF2 <- left_join(DF1, s_insurance, by = join_by(age.x == age, ed_arrival_month == ed_arrival_month, pat_enc_csn_id == pat_enc_csn_id))
+
+npts<- n_distinct(DF2$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
+nminors <-n_distinct(minors$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
+cat("-DF 2 is now the visit pull data with addended chart review data and additional insurance data. Total patients", npts,".   ")
+cat("-", nminors, "minor patients were excluded")
+
+rm(npts, nminors)
+
+```
+
+#Main Dataframe (to be re-uploaded to onedrive)
+```{r}
+variables1 <- colnames(cn_chart_review)
+variables2 <-
+  DF2 %>% select(arrive_dt:primary_coverage_benefit_plan_name.y) %>% colnames()
+variables3 <-
+  DF2 %>% select(ends_with(c(
+    "ts", "num", "id", "yn", "name", "dt", "time", "zip", "name"
+  ))) %>% colnames()
+vars <- c(variables1, variables2, variables3)
+#r stands for reduced
+r_DF1 <- DF2 %>%
+  select(matches(vars)) %>%
+  mutate(
+    insurance_cov = case_when(
+      !is.na(primary_coverage_benefit_plan_name.x) ~ primary_coverage_benefit_plan_name.x,
+      is.na(primary_coverage_benefit_plan_name.x) & !is.na(primary_coverage_benefit_plan_name.y) ~ primary_coverage_benefit_plan_name.y,
+      .default = NA
+    )
+  ) %>%
+  mutate(
+    insurance_pay = case_when(
+      !is.na(primary_coverage_payor_name.x) ~ primary_coverage_payor_name.x,
+      is.na(primary_coverage_payor_name.x) & !is.na(primary_coverage_payor_name.y) ~ primary_coverage_payor_name.y,
+    )
+  ) %>%
+  mutate(reason_to_exclude = case_when(is.na(reason_to_exclude) ~ 0, .default = reason_to_exclude))
+
+```
+
+insurance categories:
+```{r}
+Medicare <-("MCR|MEDICARE|CONNECTICARE")
+Medicaid <-("MCD|HUSKY|MEDICAID" )
+SA_insurance <-("SEXUAL|ASSAULT")
+private<-("UNITED HEALTHCARE|AETNA|HARVARD PILGRIM|BCBS|CENTURY PREFERRED|OXFORD|CIGNA|COMMERCIAL GENERIC|YALE|TRICARE|OSCAR|UNITED HEALTHCARE|STIRLING|MERITAIN")
+r_DF2 <- r_DF1 %>% mutate(
+  insurance = case_when(
+    str_detect(insurance_pay, paste(Medicare)) ~ "Medicare",
+    str_detect(insurance_pay, paste(Medicaid)) ~ "Medicaid",
+    str_detect(insurance_pay, paste(SA_insurance)) ~ "Sexual Assault",
+    str_detect(insurance_pay, paste(private)) ~ "Private Insurance",
+    is.na(insurance_pay) ~ "Uninsured/Self-Pay",
+    insurance_pay == "0" ~"Uninsured/Self-Pay",
+    .default = insurance_pay
+  )
+)
+cat("The insurance categories are:", unique(r_DF2$insurance))
+```
+
+
+## creating cohorts
+```{r}
+excluded_patients <- r_DF2 %>% filter(!is.na(exclude))
+r_DF3 <- r_DF2 %>% filter(is.na(exclude))
+n_excluded <-n_distinct(excluded_patients$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
+cat("-", n_excluded, "patients were excluded based on chart review.")
+rm(n_excluded)
+```
+
+
+```{r}
+
+```
+
+
