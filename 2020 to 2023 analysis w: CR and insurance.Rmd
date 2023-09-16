@@ -148,10 +148,10 @@ cn_chart_review <- cn_chart_review %>%
 minors <- rf_visit_pull %>% filter(age < 18)
 adult_visit_pull <- rf_visit_pull %>% filter(age >= 18) %>%  mutate(ed_arrival_date = date(arrive_dt))
 
-DF1 <- left_join(adult_visit_pull, cn_chart_review, by = join_by(pat_enc_csn_id == pat_enc_csn_id, ed_arrival_date == ed_arrival_date))
+DF1 <- left_join(adult_visit_pull, cn_chart_review, by = join_by(pat_enc_csn_id == pat_enc_csn_id, ed_arrival_date == ed_arrival_date, mrn == mrn))
 s_insurance <- cn_insurance %>% select(pat_enc_csn_id, age, primary_coverage_payor_name, primary_coverage_benefit_plan_name, ed_arrival_year, ed_arrival_month) %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id))
 
-DF2 <- left_join(DF1, s_insurance, by = join_by(age.x == age, ed_arrival_month == ed_arrival_month, pat_enc_csn_id == pat_enc_csn_id))
+DF2 <- left_join(DF1, s_insurance, by = join_by(age.x == age, ed_arrival_month == ed_arrival_month, pat_enc_csn_id == pat_enc_csn_id)) %>% rename(age = age.x)
 
 npts<- n_distinct(DF2$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
 nminors <-n_distinct(minors$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
