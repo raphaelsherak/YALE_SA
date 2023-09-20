@@ -224,13 +224,6 @@ C_F_Trauma <- read_csv("C_F_Trauma.csv",
         exam_begin_time = col_skip(), authorizing_provider_type = col_skip(), 
         final_dx_poa_c = col_skip(), dx_poa_flag = col_skip()))
 
-# single_CSN <- C_F_Trauma %>% group_by(pat_enc_csn_id) %>% mutate(dx_code=row_number()) %>% ungroup() %>% 
-#   pivot_wider(names_from = dx_code, values_from = c(icd10_dx_code, dx_name), values_fill = NA) %>% group_by(pat_enc_csn_id, mrn, esi_level, trauma_case_yn)
-# C_F_Trauma %>% group_by(pat_enc_csn_id) %>% count() %>% arrange(desc(n))
-# new problem... one patient has 720 different dx, another has 220
-
-
-
 ```
 
 
@@ -303,14 +296,13 @@ short_trauma_cat<-left_join(short_trauma_cat, d, by = join_by(pat_enc_csn_id))
 short_trauma_cat<-left_join(short_trauma_cat, e, by = join_by(pat_enc_csn_id))
 short_trauma_cat<-left_join(short_trauma_cat, f, by = join_by(pat_enc_csn_id))
 short_trauma_cat<-left_join(short_trauma_cat, g, by = join_by(pat_enc_csn_id))
+rm(a,b,c,d,e,f,g)
 ```
-
-
-list of types of imaging patients had:
+## joining trauma/dx/ esi data with other joined DF
 ```{r}
-C_F_Trauma %>% distinct(proc_display_name) %>% print ()
-only_pts_we_care_about <- C_F_Trauma %>% filter(C_F_Trauma$pat_enc_csn_id %in% r_DF2$pat_enc_csn_id)
+
 ```
+
 
 
 ## creating cohorts
