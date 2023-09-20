@@ -21,11 +21,12 @@ Code to load data
 ```{r}
 library(readxl)
 visit_pull <- read_excel("C_F_AllPatients_2020to2023.xlsx", na = c(" ", "", "NA")) %>%  as_tibble()
-chart_review <- read_excel("C_F_AdultChartReview_2020to2022.xlsx",  na = c(" ", "", "NA")) %>% as_tibble()
+chart_review <- C_F_AdultChartReview_2020to2022 <- read_excel("C_F_AdultChartReview_2020to2022.xlsx", 
+                                                              col_types = c("skip", "skip", "numeric", "date", "numeric", "text", "date","numeric", "numeric", "numeric", "text", "text", "numeric", "text", "text", "text", "numeric", "skip","text", "skip", "text", "text", "text", "text", "numeric", "text", "numeric", "text", "skip", "text", "text", "skip"), na = c("NA", "na", "")) %>% as_tibble()
 path <- "C_F_All_Insurance_Pull.xlsx"
 insurance <-path |>
-excel_sheets() |>
-set_names() |> map(read_excel, path = path) |> list_rbind() |> as_tibble()
+  excel_sheets() |>
+  set_names() |> map(read_excel, path = path) |> list_rbind() |> as_tibble()
 ```
 visit_pull has 942 obs of 192 variables
 chart_review has 691 obs of 36 variables
@@ -37,7 +38,6 @@ cn_visit_pull <-clean_names(visit_pull)
 cn_visit_pull <- cn_visit_pull %>% rename(pat_enc_csn_id = pat_enc_csn_id_1) %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id))
 cn_chart_review <-clean_names(chart_review)
 cn_chart_review <- cn_chart_review %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id))
-cn_chart_review <- cn_chart_review %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id)) %>% rename(age_of_assailant_cat = age_of_assailant) %>% rename(assailant_age = x25)
 cn_insurance <-clean_names(insurance)
 #optional removing of old DF
 rm(chart_review,visit_pull,insurance,path)
@@ -149,8 +149,8 @@ cn_chart_review <- cn_chart_review %>%
 
 minors <- rf_visit_pull %>% filter(age < 18)
 adult_visit_pull <- rf_visit_pull %>% filter(age >= 18) %>%  mutate(ed_arrival_date = date(arrive_dt))
-
-DF1 <- left_join(adult_visit_pull, cn_chart_review, by = join_by(pat_enc_csn_id == pat_enc_csn_id, ed_arrival_date == ed_arrival_date, mrn == mrn))
+#now joining in minors as well with plan to filter them out at the end
+DF1 <- left_join(rf_visit_pull, cn_chart_review, by = join_by(pat_enc_csn_id == pat_enc_csn_id, ed_arrival_date == ed_arrival_date, mrn == mrn))
 s_insurance <- cn_insurance %>% select(pat_enc_csn_id, age, primary_coverage_payor_name, primary_coverage_benefit_plan_name, ed_arrival_year, ed_arrival_month) %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id))
 
 DF2 <- left_join(DF1, s_insurance, by = join_by(age.x == age, ed_arrival_month == ed_arrival_month, pat_enc_csn_id == pat_enc_csn_id)) %>% rename(age = age.x)
@@ -189,8 +189,8 @@ r_DF1 <- DF2 %>%
       !is.na(primary_coverage_payor_name.x) ~ primary_coverage_payor_name.x,
       is.na(primary_coverage_payor_name.x) & !is.na(primary_coverage_payor_name.y) ~ primary_coverage_payor_name.y,
     )
-  ) %>%
-  mutate(reason_to_exclude = case_when(is.na(reason_to_exclude) ~ 0, .default = reason_to_exclude))
+  ) # %>%
+  #no longer need: mutate(reason_to_exclude = case_when(is.na(reason_to_exclude) ~ 0, .default = reason_to_exclude))
 
 ```
 
@@ -212,6 +212,30 @@ r_DF2 <- r_DF1 %>% mutate(
   )
 )
 cat("The insurance categories are:", unique(r_DF2$insurance))
+```
+## trauma patient data:
+need to first re-format so single CSN per row, multiple dx columns doesn't work (too many)
+plan: make new variable for dx category, then consolidate by grouping by ICD10 codes, ESI level, Procedure (imaging)
+```{r}
+library(readr)
+C_F_Trauma <- read_csv("C_F_Trauma.csv", 
+    col_types = cols(order_time = col_skip(), 
+        exam_begin_time = col_skip(), authorizing_provider_type = col_skip(), 
+        final_dx_poa_c = col_skip(), dx_poa_flag = col_skip()))
+
+# single_CSN <- C_F_Trauma %>% group_by(pat_enc_csn_id) %>% mutate(dx_code=row_number()) %>% ungroup() %>% 
+#   pivot_wider(names_from = dx_code, values_from = c(icd10_dx_code, dx_name), values_fill = NA) %>% group_by(pat_enc_csn_id, mrn, esi_level, trauma_case_yn)
+# C_F_Trauma %>% group_by(pat_enc_csn_id) %>% count() %>% arrange(desc(n))
+# new problem... one patient has 720 different dx, another has 220
+
+
+
+```
+
+list of types of imaging patients had:
+```{r}
+C_F_Trauma %>% distinct(proc_display_name) %>% print ()
+only_pts_we_care_about <- C_F_Trauma %>% filter(C_F_Trauma$pat_enc_csn_id %in% r_DF2$pat_enc_csn_id)
 ```
 
 
