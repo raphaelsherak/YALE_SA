@@ -257,7 +257,7 @@ pain <-  ICD_names %>% filter(category == "Pain") %>% pull(var = dx, name = cate
 psych <-  ICD_names %>% filter(category == "Psychiatry") %>% pull(var = dx, name = category)
 drugs <-  ICD_names %>% filter(category == "Illicit Drug Use") %>% pull(var = dx, name = category)
 minor_injury <- ICD_names %>% filter(category == "Minor Injury") %>% pull(var = dx, name = category)
-majory_injury <- ICD_names %>% filter(category == "Minor Injury") %>% pull(var = dx, name = category)
+major_injury <- ICD_names %>% filter(category == "Minor Injury") %>% pull(var = dx, name = category)
 sdoh <- ICD_names %>% filter(category == "Homelessness/SDOH") %>% pull(var = dx, name = category)
 
 ```
@@ -271,7 +271,7 @@ C_F_Trauma_dxcat <- C_F_Trauma %>%
     Psych = if_else(dx_name %in% psych, 1, NA),
     Drugs = if_else(dx_name %in% drugs, 1, NA),
     Minor_injury = if_else(dx_name %in% minor_injury, 1, NA),
-    Majory_injury = if_else(dx_name %in% majory_injury, 1, NA),
+    Major_injury = if_else(dx_name %in% major_injury, 1, NA),
     SDOH = if_else(dx_name %in% sdoh, 1, NA),
     )
 
@@ -283,20 +283,26 @@ Now shorten and condense to prep for join
 short_trauma <- C_F_Trauma_dxcat %>% 
   select(pat_enc_csn_id, esi_level, trauma_case_yn) %>% distinct() 
 ```
-function to speed things up
-```{r}
-yn_var <-function(.data, z){
- a <- .data %>%  select(pat_enc_csn_id, z) %>% filter(!is.na(z)) %>% distinct()
-  return(a)
-}
-  
-```
 
 ```{r}
-etohers <- C_F_Trauma_dxcat %>% select(pat_enc_csn_id, Etoh) %>% filter(!is.na(Etoh)) %>% distinct()
-a <- left_join(short_trauma, etohers, by = "pat_enc_csn_id")
-painers <- C_F_Trauma_dxcat %>% select(pat_enc_csn_id, Pain) %>% filter(!is.na(Pain)) %>% distinct()
-# %>% group_by(pat_enc_csn_id) %>% add_count() %>% ungroup() %>% arrange(desc(n))
+a<- C_F_Trauma_dxcat %>%  select(pat_enc_csn_id, Etoh) %>% filter(!is.na(Etoh)) %>% distinct()
+b<- C_F_Trauma_dxcat %>%  select(pat_enc_csn_id, Pain) %>% filter(!is.na(Pain)) %>% distinct()
+c<-C_F_Trauma_dxcat %>%  select(pat_enc_csn_id, Psych) %>% filter(!is.na(Psych)) %>% distinct()
+d<-C_F_Trauma_dxcat %>%  select(pat_enc_csn_id, Drugs) %>% filter(!is.na(Drugs)) %>% distinct()
+e<-C_F_Trauma_dxcat %>%  select(pat_enc_csn_id, Minor_injury) %>% filter(!is.na(Minor_injury)) %>% distinct()
+f<-C_F_Trauma_dxcat %>%  select(pat_enc_csn_id, Major_injury) %>% filter(!is.na(Major_injury)) %>% distinct()
+g<-C_F_Trauma_dxcat %>%  select(pat_enc_csn_id, SDOH) %>% filter(!is.na(SDOH)) %>% distinct()
+```
+join them all back
+
+```{r}
+short_trauma_cat<-left_join(short_trauma, a, by = join_by(pat_enc_csn_id))
+short_trauma_cat<-left_join(short_trauma_cat, b, by = join_by(pat_enc_csn_id))
+short_trauma_cat<-left_join(short_trauma_cat, c, by = join_by(pat_enc_csn_id))
+short_trauma_cat<-left_join(short_trauma_cat, d, by = join_by(pat_enc_csn_id))
+short_trauma_cat<-left_join(short_trauma_cat, e, by = join_by(pat_enc_csn_id))
+short_trauma_cat<-left_join(short_trauma_cat, f, by = join_by(pat_enc_csn_id))
+short_trauma_cat<-left_join(short_trauma_cat, g, by = join_by(pat_enc_csn_id))
 ```
 
 

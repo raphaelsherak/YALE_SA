@@ -12,13 +12,32 @@ DY_ICD <- read_excel("DY_ICD10_Classifications.xlsx")
 pivoting
 ```{r}
 
+DY_ICD <- read_excel("DY_ICD10_Classifications.xlsx")
 ICD_names <- DY_ICD %>% 
   pivot_longer(
     everything(),
     cols_vary = "slowest",
     names_to = "category",
-    values_to = "dx"
-  )
+    values_to = "dx",
+    values_drop_na = TRUE
+  ) %>% 
+  relocate(dx, .before = category)
 
+```
+
+
+
+```{r}
+yes_no_var <-function(.data, z){
+ a <- .data %>%  select(pat_enc_csn_id, z) %>% filter(!is.na(z)) %>% distinct()
+
+  return(a)
+}
+  
+  
+```
+
+```{r}
+abc <-C_F_Trauma_dxcat %>%  yes_no_var("Etoh")
 ```
 

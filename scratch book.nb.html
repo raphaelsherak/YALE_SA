@@ -1770,22 +1770,44 @@ https://cran.r-project.org/doc/manuals/r-patched/R-admin.html#Installing-package
 <p>pivoting</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuXG5JQ0RfbmFtZXMgPC0gRFlfSUNEICU+JSBcbiAgcGl2b3RfbG9uZ2VyKFxuICAgIGV2ZXJ5dGhpbmcoKSxcbiAgICBjb2xzX3ZhcnkgPSBcInNsb3dlc3RcIixcbiAgICBuYW1lc190byA9IFwiY2F0ZWdvcnlcIixcbiAgICB2YWx1ZXNfdG8gPSBcImR4XCJcbiAgKVxuXG5gYGAifQ== -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuXG5JQ0RfbmFtZXMgPC0gRFlfSUNEICU+JSBcbiAgcGl2b3RfbG9uZ2VyKFxuICAgIGV2ZXJ5dGhpbmcoKSxcbiAgICBjb2xzX3ZhcnkgPSBcInNsb3dlc3RcIixcbiAgICBuYW1lc190byA9IFwiY2F0ZWdvcnlcIixcbiAgICB2YWx1ZXNfdG8gPSBcImR4XCIsXG4gICAgdmFsdWVzX2Ryb3BfbmEgPSBUUlVFXG4gICkgJT4lIFxuICByZWxvY2F0ZShkeCwgLmJlZm9yZSA9IGNhdGVnb3J5KVxuXG5gYGAifQ== -->
 <pre class="r"><code>
 ICD_names &lt;- DY_ICD %&gt;% 
   pivot_longer(
     everything(),
     cols_vary = &quot;slowest&quot;,
     names_to = &quot;category&quot;,
-    values_to = &quot;dx&quot;
-  )
+    values_to = &quot;dx&quot;,
+    values_drop_na = TRUE
+  ) %&gt;% 
+  relocate(dx, .before = category)
 </code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxueWVzX25vX3ZhciA8LWZ1bmN0aW9uKC5kYXRhLCB6KXtcbiBhIDwtIC5kYXRhICU+JSAgc2VsZWN0KHBhdF9lbmNfY3NuX2lkLCB6KSAlPiUgZmlsdGVyKCFpcy5uYSh6KSkgJT4lIGRpc3RpbmN0KClcblxuICByZXR1cm4oYSlcbn1cbiAgXG4gIFxuYGBgIn0= -->
+<pre class="r"><code>yes_no_var &lt;-function(.data, z){
+ a &lt;- .data %&gt;%  select(pat_enc_csn_id, z) %&gt;% filter(!is.na(z)) %&gt;% distinct()
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiU2NyYXRjaCBib29rIGZvciBjb2RpbmciCm91dHB1dDogaHRtbF9ub3RlYm9vawotLS0KCmBgYHtyfQpsaWJyYXJ5KHRpZHl2ZXJzZSkKbGlicmFyeShyZWFkeGwpCkRZX0lDRCA8LSByZWFkX2V4Y2VsKCJEWV9JQ0QxMF9DbGFzc2lmaWNhdGlvbnMueGxzeCIpCgpgYGAKcGl2b3RpbmcKYGBge3J9CgpJQ0RfbmFtZXMgPC0gRFlfSUNEICU+JSAKICBwaXZvdF9sb25nZXIoCiAgICBldmVyeXRoaW5nKCksCiAgICBjb2xzX3ZhcnkgPSAic2xvd2VzdCIsCiAgICBuYW1lc190byA9ICJjYXRlZ29yeSIsCiAgICB2YWx1ZXNfdG8gPSAiZHgiCiAgKQoKYGBgCgo=</div>
+  return(a)
+}
+  
+  </code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYWJjIDwtQ19GX1RyYXVtYV9keGNhdCAlPiUgIHllc19ub192YXIoXCJFdG9oXCIpXG5gYGAifQ== -->
+<pre class="r"><code>abc &lt;-C_F_Trauma_dxcat %&gt;%  yes_no_var(&quot;Etoh&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiU2NyYXRjaCBib29rIGZvciBjb2RpbmciCm91dHB1dDogaHRtbF9ub3RlYm9vawotLS0KCmBgYHtyfQpsaWJyYXJ5KHRpZHl2ZXJzZSkKbGlicmFyeShyZWFkeGwpCkRZX0lDRCA8LSByZWFkX2V4Y2VsKCJEWV9JQ0QxMF9DbGFzc2lmaWNhdGlvbnMueGxzeCIpCgpgYGAKcGl2b3RpbmcKYGBge3J9CgpEWV9JQ0QgPC0gcmVhZF9leGNlbCgiRFlfSUNEMTBfQ2xhc3NpZmljYXRpb25zLnhsc3giKQpJQ0RfbmFtZXMgPC0gRFlfSUNEICU+JSAKICBwaXZvdF9sb25nZXIoCiAgICBldmVyeXRoaW5nKCksCiAgICBjb2xzX3ZhcnkgPSAic2xvd2VzdCIsCiAgICBuYW1lc190byA9ICJjYXRlZ29yeSIsCiAgICB2YWx1ZXNfdG8gPSAiZHgiLAogICAgdmFsdWVzX2Ryb3BfbmEgPSBUUlVFCiAgKSAlPiUgCiAgcmVsb2NhdGUoZHgsIC5iZWZvcmUgPSBjYXRlZ29yeSkKCmBgYAoKCgpgYGB7cn0KeWVzX25vX3ZhciA8LWZ1bmN0aW9uKC5kYXRhLCB6KXsKIGEgPC0gLmRhdGEgJT4lICBzZWxlY3QocGF0X2VuY19jc25faWQsIHopICU+JSBmaWx0ZXIoIWlzLm5hKHopKSAlPiUgZGlzdGluY3QoKQoKICByZXR1cm4oYSkKfQogIAogIApgYGAKCmBgYHtyfQphYmMgPC1DX0ZfVHJhdW1hX2R4Y2F0ICU+JSAgeWVzX25vX3ZhcigiRXRvaCIpCmBgYAoK</div>
 
 
 
