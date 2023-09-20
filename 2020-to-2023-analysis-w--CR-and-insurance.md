@@ -6,22 +6,75 @@ output:
 ---
 ## Setup
 Code to load packages
-```{r}
+
+```r
 #packages
 library(tidyverse)
+```
+
+```
+## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+## ✔ dplyr     1.1.3     ✔ readr     2.1.4
+## ✔ forcats   1.0.0     ✔ stringr   1.5.0
+## ✔ ggplot2   3.4.3     ✔ tibble    3.2.1
+## ✔ lubridate 1.9.2     ✔ tidyr     1.3.0
+## ✔ purrr     1.0.2     
+## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+## ✖ dplyr::filter() masks stats::filter()
+## ✖ dplyr::lag()    masks stats::lag()
+## ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+```
+
+```r
 library(readxl)
 library(readr)
 library(parsedate)
+```
+
+```
+## 
+## Attaching package: 'parsedate'
+## 
+## The following object is masked from 'package:readr':
+## 
+##     parse_date
+```
+
+```r
 library(janitor)
+```
+
+```
+## 
+## Attaching package: 'janitor'
+## 
+## The following objects are masked from 'package:stats':
+## 
+##     chisq.test, fisher.test
+```
+
+```r
 library(lubridate)
 library(labelled)
 library(overviewR)
 ```
 
 Code to load data
-```{r}
+
+```r
 library(readxl)
 visit_pull <- read_excel("C_F_AllPatients_2020to2023.xlsx", na = c(" ", "", "NA")) %>%  as_tibble()
+```
+
+```
+## New names:
+## • `Pat Enc Csn ID` -> `Pat Enc Csn ID...1`
+## • `Pat Enc Csn ID` -> `Pat Enc Csn ID...32`
+## • `Descovy Ordered Num` -> `Descovy Ordered Num...96`
+## • `Descovy Ordered Num` -> `Descovy Ordered Num...97`
+```
+
+```r
 chart_review <- C_F_AdultChartReview_2020to2022 <- read_excel("C_F_AdultChartReview_2020to2022.xlsx", 
                                                               col_types = c("skip", "skip", "numeric", "date", "numeric", "text", "date","numeric", "numeric", "numeric", "text", "text", "numeric", "text", "text", "text", "numeric", "skip","text", "skip", "text", "text", "text", "text", "numeric", "text", "numeric", "text", "skip", "text", "text", "skip"), na = c("NA", "na", "")) %>% as_tibble()
 path <- "C_F_All_Insurance_Pull.xlsx"
@@ -33,7 +86,8 @@ visit_pull has 942 obs of 192 variables
 chart_review has 691 obs of 36 variables
 insurance has 415 obs of 25 variables
 cleaning names:
-```{r}
+
+```r
 #name cleaning
 cn_visit_pull <-clean_names(visit_pull)
 cn_visit_pull <- cn_visit_pull %>% rename(pat_enc_csn_id = pat_enc_csn_id_1) %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id)) %>% select(-pat_enc_csn_id_32)
@@ -44,7 +98,8 @@ cn_insurance <-clean_names(insurance)
 rm(chart_review,visit_pull,insurance,path)
 ```
 reformatting before join
-```{r}
+
+```r
 origin <- "1904-01-01" %>% as_date()
 # set TZ to east coast standard
 time_zone <- "America/New_York"
@@ -142,12 +197,11 @@ levels(rf_visit_pull$pathway) <-
 # need to also reformat cn_chart_review ed arrival date to get same format
 cn_chart_review <- cn_chart_review %>% 
   mutate(ed_arrival_date = as_date(ed_arrival_date))
-
 ```
 
 #Joining datasets, excluding patients
-```{r}
 
+```r
 minors <- rf_visit_pull %>% filter(age < 18)
 #adult_visit_pull <- rf_visit_pull %>% filter(age >= 18) %>%  mutate(ed_arrival_date = date(arrive_dt))
 #now joining in minors as well with plan to filter them out at the end
@@ -159,14 +213,27 @@ DF2 <- left_join(DF1, s_insurance, by = join_by(age.x == age, ed_arrival_month =
 npts<- n_distinct(DF2$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
 nminors <-n_distinct(minors$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
 cat("-DF 2 is now the visit pull data with addended chart review data and additional insurance data. Total patients", npts,".   ")
+```
+
+```
+## -DF 2 is now the visit pull data with addended chart review data and additional insurance data. Total patients 942 .
+```
+
+```r
 cat("-", nminors, "minor patients are to be excluded")
+```
 
+```
+## - 264 minor patients are to be excluded
+```
+
+```r
 rm(npts, nminors)
-
 ```
 
 #Main Dataframe (to be re-uploaded to onedrive)
-```{r}
+
+```r
 variables1 <- colnames(cn_chart_review)
 variables2 <-
   DF2 %>% select(arrive_dt:primary_coverage_benefit_plan_name.y) %>% colnames()
@@ -192,11 +259,11 @@ r_DF1 <- DF2 %>%
     )
   ) # %>%
   #no longer need: mutate(reason_to_exclude = case_when(is.na(reason_to_exclude) ~ 0, .default = reason_to_exclude))
-
 ```
 
 insurance categories:
-```{r}
+
+```r
 Medicare <-("MCR|MEDICARE|CONNECTICARE")
 Medicaid <-("MCD|HUSKY|MEDICAID" )
 SA_insurance <-("SEXUAL|ASSAULT")
@@ -215,23 +282,40 @@ r_DF2 <- r_DF1 %>% mutate(
 cat("The insurance categories are:", unique(r_DF2$insurance))
 ```
 
+```
+## The insurance categories are: Sexual Assault Medicaid Private Insurance Medicare Uninsured/Self-Pay
+```
+
 ## trauma patient data:
 need to first re-format so single CSN per row, multiple dx columns doesn't work (too many)
 plan: make new variable for dx category, then consolidate by grouping by ICD10 codes, ESI level, Procedure (imaging)
-```{r}
+
+```r
 library(readr)
 C_F_Trauma <- read_csv("C_F_Trauma.csv", 
     col_types = cols(order_time = col_skip(), 
         exam_begin_time = col_skip(), authorizing_provider_type = col_skip(), 
         final_dx_poa_c = col_skip(), dx_poa_flag = col_skip()))
-
 ```
 
 
 ### ICD10 dx categories:
-```{r}
+
+```r
 #import dataset w/ classifiers:
 DY_ICD <- read_excel("DY_ICD10_Classifications.xlsx")
+```
+
+```
+## New names:
+## • `` -> `...9`
+## • `` -> `...10`
+## • `` -> `...11`
+## • `Other` -> `Other...12`
+## • `Other` -> `Other...13`
+```
+
+```r
 ICD_names <- DY_ICD %>% 
   pivot_longer(
     everything(),
@@ -253,11 +337,11 @@ drugs <-  ICD_names %>% filter(category == "Illicit Drug Use") %>% pull(var = dx
 minor_injury <- ICD_names %>% filter(category == "Minor Injury") %>% pull(var = dx, name = category)
 major_injury <- ICD_names %>% filter(category == "Minor Injury") %>% pull(var = dx, name = category)
 sdoh <- ICD_names %>% filter(category == "Homelessness/SDOH") %>% pull(var = dx, name = category)
-
 ```
 New variable of dx categories for trauma set
 
-```{r}
+
+```r
 C_F_Trauma_dxcat <- C_F_Trauma %>% 
   mutate(
     Etoh = if_else(dx_name %in% etoh, 1, NA),
@@ -268,17 +352,18 @@ C_F_Trauma_dxcat <- C_F_Trauma %>%
     Major_injury = if_else(dx_name %in% major_injury, 1, NA),
     SDOH = if_else(dx_name %in% sdoh, 1, NA),
     )
-
 ```
 
 
 Now shorten and condense to prep for join
-```{r}
+
+```r
 short_trauma <- C_F_Trauma_dxcat %>% 
   select(pat_enc_csn_id, esi_level, trauma_case_yn) %>% distinct() 
 ```
 
-```{r}
+
+```r
 a<- C_F_Trauma_dxcat %>%  select(pat_enc_csn_id, Etoh) %>% filter(!is.na(Etoh)) %>% distinct()
 b<- C_F_Trauma_dxcat %>%  select(pat_enc_csn_id, Pain) %>% filter(!is.na(Pain)) %>% distinct()
 c<-C_F_Trauma_dxcat %>%  select(pat_enc_csn_id, Psych) %>% filter(!is.na(Psych)) %>% distinct()
@@ -289,7 +374,8 @@ g<-C_F_Trauma_dxcat %>%  select(pat_enc_csn_id, SDOH) %>% filter(!is.na(SDOH)) %
 ```
 join them all back
 
-```{r}
+
+```r
 short_trauma_cat<-left_join(short_trauma, a, by = join_by(pat_enc_csn_id))
 short_trauma_cat<-left_join(short_trauma_cat, b, by = join_by(pat_enc_csn_id))
 short_trauma_cat<-left_join(short_trauma_cat, c, by = join_by(pat_enc_csn_id))
@@ -300,26 +386,48 @@ short_trauma_cat<-left_join(short_trauma_cat, g, by = join_by(pat_enc_csn_id)) %
 rm(a,b,c,d,e,f,g)
 ```
 ## joining trauma/dx/ esi data with other joined DF
-```{r}
-full_merge_DF <- left_join(r_DF2, short_trauma_cat, by = join_by(pat_enc_csn_id)) %>% distinct()
 
+```r
+full_merge_DF <- left_join(r_DF2, short_trauma_cat, by = join_by(pat_enc_csn_id)) %>% distinct()
 ```
 
 
 
 ## creating cohorts
-```{r}
+
+```r
 excluded_patients <- full_merge_DF %>% filter(!is.na(exclude))
 r_DF3 <- full_merge_DF %>% filter(is.na(exclude))
 excluded_patients <- excluded_patients %>% add_value_labels(reason_to_exclude = c( "Seen earlier" = "1", "Patient reports not being assaulted" = "2", "not excluded" = "3", "Psych" = "4", "Eloped" = "5")) %>% to_factor()
 excluded_patients %>% group_by(reason_to_exclude) %>% summarise(n=n())
+```
+
+```
+## # A tibble: 4 × 2
+##   reason_to_exclude                       n
+##   <fct>                               <int>
+## 1 Seen earlier                           14
+## 2 Patient reports not being assaulted    12
+## 3 not excluded                            2
+## 4 Eloped                                  9
+```
+
+```r
 n_excluded <-n_distinct(excluded_patients$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
 cat("-", n_excluded, "patients were excluded based on chart review.")
+```
+
+```
+## - 37 patients were excluded based on chart review.
+```
+
+```r
 rm(n_excluded)
 ```
 
 
-```{r}
+
+```r
 post_WO <- full_merge_DF %>% filter(ed_arrival_date > sb_start) %>% filter(age >= 18)
 ```
 
