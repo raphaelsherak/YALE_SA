@@ -1,0 +1,24 @@
+---
+title: "Scratch book for coding"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(readxl)
+DY_ICD <- read_excel("DY_ICD10_Classifications.xlsx")
+
+```
+pivoting
+```{r}
+
+ICD_names <- DY_ICD %>% 
+  pivot_longer(
+    everything(),
+    cols_vary = "slowest",
+    names_to = "category",
+    values_to = "dx"
+  )
+
+```
+

@@ -213,6 +213,7 @@ r_DF2 <- r_DF1 %>% mutate(
 )
 cat("The insurance categories are:", unique(r_DF2$insurance))
 ```
+
 ## trauma patient data:
 need to first re-format so single CSN per row, multiple dx columns doesn't work (too many)
 plan: make new variable for dx category, then consolidate by grouping by ICD10 codes, ESI level, Procedure (imaging)
@@ -231,6 +232,73 @@ C_F_Trauma <- read_csv("C_F_Trauma.csv",
 
 
 ```
+
+
+### ICD10 dx categories:
+```{r}
+#import dataset w/ classifiers:
+DY_ICD <- read_excel("DY_ICD10_Classifications.xlsx")
+ICD_names <- DY_ICD %>% 
+  pivot_longer(
+    everything(),
+    cols_vary = "slowest",
+    names_to = "category",
+    values_to = "dx",
+    values_drop_na = TRUE
+  ) %>% 
+  relocate(dx, .before = category) %>% 
+  mutate(category = if_else(
+    category %in% c("Other...12", "Other...13"), "Other", category
+  )) %>% 
+  distinct()
+#creating dx category vectors
+etoh <- ICD_names %>% filter(category == "Alcohol") %>% pull(var = dx, name = category)
+pain <-  ICD_names %>% filter(category == "Pain") %>% pull(var = dx, name = category)
+psych <-  ICD_names %>% filter(category == "Psychiatry") %>% pull(var = dx, name = category)
+drugs <-  ICD_names %>% filter(category == "Illicit Drug Use") %>% pull(var = dx, name = category)
+minor_injury <- ICD_names %>% filter(category == "Minor Injury") %>% pull(var = dx, name = category)
+majory_injury <- ICD_names %>% filter(category == "Minor Injury") %>% pull(var = dx, name = category)
+sdoh <- ICD_names %>% filter(category == "Homelessness/SDOH") %>% pull(var = dx, name = category)
+
+```
+New variable of dx categories for trauma set
+
+```{r}
+C_F_Trauma_dxcat <- C_F_Trauma %>% 
+  mutate(
+    Etoh = if_else(dx_name %in% etoh, 1, NA),
+    Pain = if_else(dx_name %in% pain, 1, NA),
+    Psych = if_else(dx_name %in% psych, 1, NA),
+    Drugs = if_else(dx_name %in% drugs, 1, NA),
+    Minor_injury = if_else(dx_name %in% minor_injury, 1, NA),
+    Majory_injury = if_else(dx_name %in% majory_injury, 1, NA),
+    SDOH = if_else(dx_name %in% sdoh, 1, NA),
+    )
+
+```
+
+
+Now shorten and condense to prep for join
+```{r}
+short_trauma <- C_F_Trauma_dxcat %>% 
+  select(pat_enc_csn_id, esi_level, trauma_case_yn) %>% distinct() 
+```
+function to speed things up
+```{r}
+yn_var <-function(.data, z){
+ a <- .data %>%  select(pat_enc_csn_id, z) %>% filter(!is.na(z)) %>% distinct()
+  return(a)
+}
+  
+```
+
+```{r}
+etohers <- C_F_Trauma_dxcat %>% select(pat_enc_csn_id, Etoh) %>% filter(!is.na(Etoh)) %>% distinct()
+a <- left_join(short_trauma, etohers, by = "pat_enc_csn_id")
+painers <- C_F_Trauma_dxcat %>% select(pat_enc_csn_id, Pain) %>% filter(!is.na(Pain)) %>% distinct()
+# %>% group_by(pat_enc_csn_id) %>% add_count() %>% ungroup() %>% arrange(desc(n))
+```
+
 
 list of types of imaging patients had:
 ```{r}
