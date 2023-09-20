@@ -1,7 +1,7 @@
 ---
 title: "2020 to 2023 analysis w/ CR and insurance"
 output: html_notebook:
-  keep_md: true
+  keep_md: TRUE
 ---
 ## Setup
 Code to load packages
@@ -219,6 +219,7 @@ cat("The insurance categories are:", unique(r_DF2$insurance))
 ```{r}
 excluded_patients <- r_DF2 %>% filter(!is.na(exclude))
 r_DF3 <- r_DF2 %>% filter(is.na(exclude))
+excluded_patients %>% group_by(reason_to_exclude) %>% summarise(n=n())
 n_excluded <-n_distinct(excluded_patients$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
 cat("-", n_excluded, "patients were excluded based on chart review.")
 rm(n_excluded)
@@ -226,7 +227,7 @@ rm(n_excluded)
 
 
 ```{r}
-
+post_WO <- r_DF3 %>% filter(ed_arrival_date > sb_start)
 ```
 
-
+# Merge in trauma, dx. 
