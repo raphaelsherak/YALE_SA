@@ -35,7 +35,7 @@ cleaning names:
 ```{r}
 #name cleaning
 cn_visit_pull <-clean_names(visit_pull)
-cn_visit_pull <- cn_visit_pull %>% rename(pat_enc_csn_id = pat_enc_csn_id_1) %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id))
+cn_visit_pull <- cn_visit_pull %>% rename(pat_enc_csn_id = pat_enc_csn_id_1) %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id)) %>% select(-pat_enc_csn_id_32)
 cn_chart_review <-clean_names(chart_review)
 cn_chart_review <- cn_chart_review %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id))
 cn_insurance <-clean_names(insurance)
@@ -44,7 +44,7 @@ rm(chart_review,visit_pull,insurance,path)
 ```
 reformatting before join
 ```{r}
-origin <- "1904-01-01"
+origin <- "1904-01-01" %>% as_date()
 # set TZ to east coast standard
 time_zone <- "America/New_York"
 #pathway went live on 7/13/21
@@ -55,7 +55,6 @@ sb_start <- mdy("9/8/21", tz = time_zone)
 CDC_STI_date <- mdy("7/23/2021", tz = time_zone)
 rf_visit_pull <- cn_visit_pull %>% mutate(
   arrive_dt = as_datetime(ed_arrival_time, tz = time_zone),
-  ed_arrival_date = as_date(ed_arrival_date),
   wtf_departure_dt = as_datetime(ed_departure_time, tz = time_zone),
   # don't use this one for now. Altered by obs/psych/admit pts?
   dispo_dt = as_datetime(ed_disposition_time, tz = time_zone),
@@ -65,6 +64,7 @@ rf_visit_pull <- cn_visit_pull %>% mutate(
   #departure TS seems to be the one that is earlier,  departure_time usually later (affected by obs/admit?)
   patient_birth_date = as_date(patient_birth_date, tz = time_zone)
 ) %>%
+  mutate(ed_arrival_date = date(arrive_dt)) %>% 
   mutate(exposure.num = case_when(arrive_dt < pathway_start ~ 0,
                                   arrive_dt > sb_start ~ 1,
                                   .default = NA)) %>%
@@ -148,9 +148,9 @@ cn_chart_review <- cn_chart_review %>%
 ```{r}
 
 minors <- rf_visit_pull %>% filter(age < 18)
-adult_visit_pull <- rf_visit_pull %>% filter(age >= 18) %>%  mutate(ed_arrival_date = date(arrive_dt))
+#adult_visit_pull <- rf_visit_pull %>% filter(age >= 18) %>%  mutate(ed_arrival_date = date(arrive_dt))
 #now joining in minors as well with plan to filter them out at the end
-DF1 <- left_join(rf_visit_pull, cn_chart_review, by = join_by(pat_enc_csn_id == pat_enc_csn_id, ed_arrival_date == ed_arrival_date, mrn == mrn))
+DF1 <- left_join(rf_visit_pull, cn_chart_review, by = join_by(pat_enc_csn_id == pat_enc_csn_id, ed_arrival_date == ed_arrival_date))
 s_insurance <- cn_insurance %>% select(pat_enc_csn_id, age, primary_coverage_payor_name, primary_coverage_benefit_plan_name, ed_arrival_year, ed_arrival_month) %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id))
 
 DF2 <- left_join(DF1, s_insurance, by = join_by(age.x == age, ed_arrival_month == ed_arrival_month, pat_enc_csn_id == pat_enc_csn_id)) %>% rename(age = age.x)
@@ -158,7 +158,7 @@ DF2 <- left_join(DF1, s_insurance, by = join_by(age.x == age, ed_arrival_month =
 npts<- n_distinct(DF2$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
 nminors <-n_distinct(minors$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
 cat("-DF 2 is now the visit pull data with addended chart review data and additional insurance data. Total patients", npts,".   ")
-cat("-", nminors, "minor patients were excluded")
+cat("-", nminors, "minor patients are to be excluded")
 
 rm(npts, nminors)
 
@@ -199,7 +199,7 @@ insurance categories:
 Medicare <-("MCR|MEDICARE|CONNECTICARE")
 Medicaid <-("MCD|HUSKY|MEDICAID" )
 SA_insurance <-("SEXUAL|ASSAULT")
-private<-("UNITED HEALTHCARE|AETNA|HARVARD PILGRIM|BCBS|CENTURY PREFERRED|OXFORD|CIGNA|COMMERCIAL GENERIC|YALE|TRICARE|OSCAR|UNITED HEALTHCARE|STIRLING|MERITAIN")
+private<-("UNITED HEALTHCARE|AETNA|HARVARD PILGRIM|BCBS|CENTURY PREFERRED|OXFORD|CIGNA|COMMERCIAL GENERIC|YALE|TRICARE|OSCAR|UNITED HEALTHCARE|STIRLING|MERITAIN|MASHANTUCKET|PEQUOT|GEHA|MAGNACARE")
 r_DF2 <- r_DF1 %>% mutate(
   insurance = case_when(
     str_detect(insurance_pay, paste(Medicare)) ~ "Medicare",
@@ -295,11 +295,12 @@ short_trauma_cat<-left_join(short_trauma_cat, c, by = join_by(pat_enc_csn_id))
 short_trauma_cat<-left_join(short_trauma_cat, d, by = join_by(pat_enc_csn_id))
 short_trauma_cat<-left_join(short_trauma_cat, e, by = join_by(pat_enc_csn_id))
 short_trauma_cat<-left_join(short_trauma_cat, f, by = join_by(pat_enc_csn_id))
-short_trauma_cat<-left_join(short_trauma_cat, g, by = join_by(pat_enc_csn_id))
+short_trauma_cat<-left_join(short_trauma_cat, g, by = join_by(pat_enc_csn_id)) %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id))
 rm(a,b,c,d,e,f,g)
 ```
 ## joining trauma/dx/ esi data with other joined DF
 ```{r}
+full_merge_DF <- left_join(r_DF2, short_trauma_cat, by = join_by(pat_enc_csn_id)) %>% distinct()
 
 ```
 
@@ -307,8 +308,9 @@ rm(a,b,c,d,e,f,g)
 
 ## creating cohorts
 ```{r}
-excluded_patients <- r_DF2 %>% filter(!is.na(exclude))
-r_DF3 <- r_DF2 %>% filter(is.na(exclude))
+excluded_patients <- full_merge_DF %>% filter(!is.na(exclude))
+r_DF3 <- full_merge_DF %>% filter(is.na(exclude))
+excluded_patients <- excluded_patients %>% add_value_labels(reason_to_exclude = c( "Seen earlier" = "1", "Patient reports not being assaulted" = "2", "not excluded" = "3", "Psych" = "4", "Eloped" = "5")) %>% to_factor()
 excluded_patients %>% group_by(reason_to_exclude) %>% summarise(n=n())
 n_excluded <-n_distinct(excluded_patients$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
 cat("-", n_excluded, "patients were excluded based on chart review.")
@@ -317,7 +319,6 @@ rm(n_excluded)
 
 
 ```{r}
-post_WO <- r_DF3 %>% filter(ed_arrival_date > sb_start)
+post_WO <- full_merge_DF %>% filter(ed_arrival_date > sb_start) %>% filter(age >= 18)
 ```
 
-# Merge in trauma, dx. 
