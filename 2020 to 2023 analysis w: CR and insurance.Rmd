@@ -1,11 +1,14 @@
 ---
 title: "2020 to 2023 analysis w/ CR and insurance"
 output: 
-  html_document:
-    keep_md: TRUE
+  html_notebook:
+  md_document:
 ---
+
 ## Setup
+
 Code to load packages
+
 ```{r}
 #packages
 library(tidyverse)
@@ -19,6 +22,7 @@ library(overviewR)
 ```
 
 Code to load data
+
 ```{r}
 library(readxl)
 visit_pull <- read_excel("C_F_AllPatients_2020to2023.xlsx", na = c(" ", "", "NA")) %>%  as_tibble()
@@ -29,10 +33,9 @@ insurance <-path |>
   excel_sheets() |>
   set_names() |> map(read_excel, path = path) |> list_rbind() |> as_tibble()
 ```
-visit_pull has 942 obs of 192 variables
-chart_review has 691 obs of 36 variables
-insurance has 415 obs of 25 variables
-cleaning names:
+
+visit_pull has 942 obs of 192 variables chart_review has 691 obs of 36 variables insurance has 415 obs of 25 variables cleaning names:
+
 ```{r}
 #name cleaning
 cn_visit_pull <-clean_names(visit_pull)
@@ -43,7 +46,9 @@ cn_insurance <-clean_names(insurance)
 #optional removing of old DF
 rm(chart_review,visit_pull,insurance,path)
 ```
+
 reformatting before join
+
 ```{r}
 origin <- "1904-01-01" %>% as_date()
 # set TZ to east coast standard
@@ -146,6 +151,7 @@ cn_chart_review <- cn_chart_review %>%
 ```
 
 #Joining datasets, excluding patients
+
 ```{r}
 
 minors <- rf_visit_pull %>% filter(age < 18)
@@ -166,6 +172,7 @@ rm(npts, nminors)
 ```
 
 #Main Dataframe (to be re-uploaded to onedrive)
+
 ```{r}
 variables1 <- colnames(cn_chart_review)
 variables2 <-
@@ -196,6 +203,7 @@ r_DF1 <- DF2 %>%
 ```
 
 insurance categories:
+
 ```{r}
 Medicare <-("MCR|MEDICARE|CONNECTICARE")
 Medicaid <-("MCD|HUSKY|MEDICAID" )
@@ -216,8 +224,9 @@ cat("The insurance categories are:", unique(r_DF2$insurance))
 ```
 
 ## trauma patient data:
-need to first re-format so single CSN per row, multiple dx columns doesn't work (too many)
-plan: make new variable for dx category, then consolidate by grouping by ICD10 codes, ESI level, Procedure (imaging)
+
+need to first re-format so single CSN per row, multiple dx columns doesn't work (too many) plan: make new variable for dx category, then consolidate by grouping by ICD10 codes, ESI level, Procedure (imaging)
+
 ```{r}
 library(readr)
 C_F_Trauma <- read_csv("C_F_Trauma.csv", 
@@ -227,8 +236,8 @@ C_F_Trauma <- read_csv("C_F_Trauma.csv",
 
 ```
 
-
 ### ICD10 dx categories:
+
 ```{r}
 #import dataset w/ classifiers:
 DY_ICD <- read_excel("DY_ICD10_Classifications.xlsx")
@@ -255,6 +264,7 @@ major_injury <- ICD_names %>% filter(category == "Minor Injury") %>% pull(var = 
 sdoh <- ICD_names %>% filter(category == "Homelessness/SDOH") %>% pull(var = dx, name = category)
 
 ```
+
 New variable of dx categories for trauma set
 
 ```{r}
@@ -271,8 +281,8 @@ C_F_Trauma_dxcat <- C_F_Trauma %>%
 
 ```
 
-
 Now shorten and condense to prep for join
+
 ```{r}
 short_trauma <- C_F_Trauma_dxcat %>% 
   select(pat_enc_csn_id, esi_level, trauma_case_yn) %>% distinct() 
@@ -287,6 +297,7 @@ e<-C_F_Trauma_dxcat %>%  select(pat_enc_csn_id, Minor_injury) %>% filter(!is.na(
 f<-C_F_Trauma_dxcat %>%  select(pat_enc_csn_id, Major_injury) %>% filter(!is.na(Major_injury)) %>% distinct()
 g<-C_F_Trauma_dxcat %>%  select(pat_enc_csn_id, SDOH) %>% filter(!is.na(SDOH)) %>% distinct()
 ```
+
 join them all back
 
 ```{r}
@@ -299,15 +310,16 @@ short_trauma_cat<-left_join(short_trauma_cat, f, by = join_by(pat_enc_csn_id))
 short_trauma_cat<-left_join(short_trauma_cat, g, by = join_by(pat_enc_csn_id)) %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id))
 rm(a,b,c,d,e,f,g)
 ```
+
 ## joining trauma/dx/ esi data with other joined DF
+
 ```{r}
 full_merge_DF <- left_join(r_DF2, short_trauma_cat, by = join_by(pat_enc_csn_id)) %>% distinct()
 
 ```
 
-
-
 ## creating cohorts
+
 ```{r}
 excluded_patients <- full_merge_DF %>% filter(!is.na(exclude))
 r_DF3 <- full_merge_DF %>% filter(is.na(exclude))
@@ -318,8 +330,6 @@ cat("-", n_excluded, "patients were excluded based on chart review.")
 rm(n_excluded)
 ```
 
-
 ```{r}
 post_WO <- full_merge_DF %>% filter(ed_arrival_date > sb_start) %>% filter(age >= 18)
 ```
-
