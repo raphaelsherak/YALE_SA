@@ -310,7 +310,7 @@ rm(a,b,c,d,e,f,g)
 ## joining trauma/dx/ esi data with other joined DF
 
 ```{r}
-full_merge_DF <- left_join(r_DF2, short_trauma_cat, by = join_by(pat_enc_csn_id)) %>% distinct() %>% select(-patient_language.y) %>% rename(patient_language = patient_language.x, mrn = mrn.x)
+full_merge_DF <- left_join(r_DF2, short_trauma_cat, by = join_by(pat_enc_csn_id)) %>% distinct() %>% select(-patient_language.y) %>% rename(patient_language = patient_language.x, mrn = mrn.x, patient_birth_date = patient_birth_date.x)
 
 ```
 now to reduce the # of variables from 183 to something more managable

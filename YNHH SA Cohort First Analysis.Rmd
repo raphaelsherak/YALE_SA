@@ -3,6 +3,12 @@ title: "YNHH Cohort First Analysis"
 output: html_notebook
 ---
 
+```{r}
+library(readr)
+all_pts <- read_csv("SA_pts_reformatted")
+```
+
+
 First creation of cohort by removing 
 -minors
 -excluded patients
