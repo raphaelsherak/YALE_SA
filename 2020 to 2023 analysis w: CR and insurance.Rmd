@@ -193,8 +193,8 @@ r_DF1 <- DF2 %>%
   mutate(
     insurance_pay = case_when(
       !is.na(primary_coverage_payor_name.x) ~ primary_coverage_payor_name.x,
-      is.na(primary_coverage_payor_name.x) & !is.na(primary_coverage_payor_name.y) ~ primary_coverage_payor_name.y,
-    )
+      is.na(primary_coverage_payor_name.x) & !is.na(primary_coverage_payor_name.y) ~ primary_coverage_payor_name.y
+    ) #only 5 patients have NA for patient.language.x. Will drop patient_language.y
   ) 
 ```
 
@@ -310,22 +310,19 @@ rm(a,b,c,d,e,f,g)
 ## joining trauma/dx/ esi data with other joined DF
 
 ```{r}
-full_merge_DF <- left_join(r_DF2, short_trauma_cat, by = join_by(pat_enc_csn_id)) %>% distinct()
+full_merge_DF <- left_join(r_DF2, short_trauma_cat, by = join_by(pat_enc_csn_id)) %>% distinct() %>% select(-patient_language.y) %>% rename(patient_language = patient_language.x, mrn = mrn.x)
 
 ```
+now to reduce the # of variables from 183 to something more managable
+```{r}
+final_variables <-full_merge_DF %>% select(15:89,103:125,139:143, 157:158,174:183) %>% select(-ends_with(".y")) %>%  colnames()
+#final_variables <- c("pat_enc_csn_id", "ed_arrival_date","age", "age_group", "age_3_group", "patient_language", "mrn.x", "patient_birth_date.x", "bmi", "weight_kg", "height_m", "documentation_of_interpreter", "time_documented", "patient_advocate_called", "patient_advocate_present", "sane_kit_done", "role_of_person_doing_the_kit", "relationship_with_patient", "sex_of_assailant", "ct_400_forensic_toxiclogy", "method_of_arrival", "follow_up_at_discharge", "if_yes_whom" )
 
-## creating cohorts
+full_merge_reduced <- full_merge_DF %>% select(all_of(final_variables))
+```
+makes CSV for patients
 
 ```{r}
-excluded_patients <- full_merge_DF %>% filter(!is.na(exclude))
-r_DF3 <- full_merge_DF %>% filter(is.na(exclude))
-excluded_patients <- excluded_patients %>% add_value_labels(reason_to_exclude = c( "Seen earlier" = "1", "Patient reports not being assaulted" = "2", "not excluded" = "3", "Psych" = "4", "Eloped" = "5")) %>% to_factor()
-excluded_patients %>% group_by(reason_to_exclude) %>% summarise(n=n())
-n_excluded <-n_distinct(excluded_patients$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
-cat("-", n_excluded, "patients were excluded based on chart review.")
-rm(n_excluded)
+write_csv(full_merge_reduced, "SA_pts_reformatted")
 ```
 
-```{r}
-post_WO <- full_merge_DF %>% filter(ed_arrival_date > sb_start) %>% filter(age >= 18)
-```

@@ -1755,23 +1755,40 @@ display: none;
 <p>First creation of cohort by removing -minors -excluded patients</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZXhjbHVkZWRfcGF0aWVudHMgPC0gZXhjbHVkZWRfcGF0aWVudHMgJT4lIGFkZF92YWx1ZV9sYWJlbHMocmVhc29uX3RvX2V4Y2x1ZGUgPSBjKCBcIlNlZW4gZWFybGllclwiID0gXCIxXCIsIFwiUGF0aWVudCByZXBvcnRzIG5vdCBiZWluZyBhc3NhdWx0ZWRcIiA9IFwiMlwiLCBcIm5vdCBleGNsdWRlZFwiID0gXCIzXCIsIFwiUHN5Y2hcIiA9IFwiNFwiLCBcIkVsb3BlZFwiID0gXCI1XCIpKSAlPiUgdG9fZmFjdG9yKClcbmV4Y2x1ZGVkX3BhdGllbnRzICU+JSBncm91cF9ieShyZWFzb25fdG9fZXhjbHVkZSkgJT4lIHN1bW1hcmlzZShuPW4oKSlcbm5fZXhjbHVkZWQgPC1uX2Rpc3RpbmN0KGV4Y2x1ZGVkX3BhdGllbnRzJHBhdF9lbmNfY3NuX2lkLCBuYS5ybT1UUlVFKSAlPiUgYXMuY2hhcmFjdGVyKClcbmNhdChcIi1cIiwgbl9leGNsdWRlZCwgXCJwYXRpZW50cyB3ZXJlIGV4Y2x1ZGVkIGJhc2VkIG9uIGNoYXJ0IHJldmlldy5cIilcbnJtKG5fZXhjbHVkZWQpYGBgXG5cbkFkZCBhIG5ldyBjaHVuayBieSBjbGlja2luZyB0aGUgKkluc2VydCBDaHVuayogYnV0dG9uIG9uIHRoZSB0b29sYmFyIG9yIGJ5IHByZXNzaW5nICpDbWQrT3B0aW9uK0kqLlxuXG5XaGVuIHlvdSBzYXZlIHRoZSBub3RlYm9vaywgYW4gSFRNTCBmaWxlIGNvbnRhaW5pbmcgdGhlIGNvZGUgYW5kIG91dHB1dCB3aWxsIGJlIHNhdmVkIGFsb25nc2lkZSBpdCAoY2xpY2sgdGhlICpQcmV2aWV3KiBidXR0b24gb3IgcHJlc3MgKkNtZCtTaGlmdCtLKiB0byBwcmV2aWV3IHRoZSBIVE1MIGZpbGUpLiBcblxuVGhlIHByZXZpZXcgc2hvd3MgeW91IGEgcmVuZGVyZWQgSFRNTCBjb3B5IG9mIHRoZSBjb250ZW50cyBvZiB0aGUgZWRpdG9yLiBDb25zZXF1ZW50bHksIHVubGlrZSAqS25pdCosICpQcmV2aWV3KiBkb2VzIG5vdCBydW4gYW55IFIgY29kZSBjaHVua3MuIEluc3RlYWQsIHRoZSBvdXRwdXQgb2YgdGhlIGNodW5rIHdoZW4gaXQgd2FzIGxhc3QgcnVuIGluIHRoZSBlZGl0b3IgaXMgZGlzcGxheWVkLlxuXG5gYGAifQ== -->
-<pre class="r"><code>excluded_patients &lt;- excluded_patients %&gt;% add_value_labels(reason_to_exclude = c( &quot;Seen earlier&quot; = &quot;1&quot;, &quot;Patient reports not being assaulted&quot; = &quot;2&quot;, &quot;not excluded&quot; = &quot;3&quot;, &quot;Psych&quot; = &quot;4&quot;, &quot;Eloped&quot; = &quot;5&quot;)) %&gt;% to_factor()
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZXhjbHVkZWRfcGF0aWVudHMgPC0gZXhjbHVkZWRfcGF0aWVudHMgJT4lIGFkZF92YWx1ZV9sYWJlbHMocmVhc29uX3RvX2V4Y2x1ZGUgPSBjKCBcIlNlZW4gZWFybGllclwiID0gXCIxXCIsIFwiUGF0aWVudCByZXBvcnRzIG5vdCBiZWluZyBhc3NhdWx0ZWRcIiA9IFwiMlwiLCBcIm5vdCBleGNsdWRlZFwiID0gXCIzXCIsIFwiUHN5Y2hcIiA9IFwiNFwiLCBcIkVsb3BlZFwiID0gXCI1XCIpKSAlPiUgdG9fZmFjdG9yKClcbmBgYCJ9 -->
+<pre class="r"><code>excluded_patients &lt;- excluded_patients %&gt;% add_value_labels(reason_to_exclude = c( &quot;Seen earlier&quot; = &quot;1&quot;, &quot;Patient reports not being assaulted&quot; = &quot;2&quot;, &quot;not excluded&quot; = &quot;3&quot;, &quot;Psych&quot; = &quot;4&quot;, &quot;Eloped&quot; = &quot;5&quot;)) %&gt;% to_factor()</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiRXJyb3I6IG9iamVjdCAnZXhjbHVkZWRfcGF0aWVudHMnIG5vdCBmb3VuZFxuIn0= -->
+<pre><code>Error: object &#39;excluded_patients&#39; not found</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<div id="creating-cohorts" class="section level2">
+<h2>creating cohorts</h2>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZXhjbHVkZWRfcGF0aWVudHMgPC0gZnVsbF9tZXJnZV9ERiAlPiUgZmlsdGVyKCFpcy5uYShleGNsdWRlKSlcbnJfREYzIDwtIGZ1bGxfbWVyZ2VfREYgJT4lIGZpbHRlcihpcy5uYShleGNsdWRlKSlcbmV4Y2x1ZGVkX3BhdGllbnRzIDwtIGV4Y2x1ZGVkX3BhdGllbnRzICU+JSBhZGRfdmFsdWVfbGFiZWxzKHJlYXNvbl90b19leGNsdWRlID0gYyggXCJTZWVuIGVhcmxpZXJcIiA9IFwiMVwiLCBcIlBhdGllbnQgcmVwb3J0cyBub3QgYmVpbmcgYXNzYXVsdGVkXCIgPSBcIjJcIiwgXCJub3QgZXhjbHVkZWRcIiA9IFwiM1wiLCBcIlBzeWNoXCIgPSBcIjRcIiwgXCJFbG9wZWRcIiA9IFwiNVwiKSkgJT4lIHRvX2ZhY3RvcigpXG5leGNsdWRlZF9wYXRpZW50cyAlPiUgZ3JvdXBfYnkocmVhc29uX3RvX2V4Y2x1ZGUpICU+JSBzdW1tYXJpc2Uobj1uKCkpXG5uX2V4Y2x1ZGVkIDwtbl9kaXN0aW5jdChleGNsdWRlZF9wYXRpZW50cyRwYXRfZW5jX2Nzbl9pZCwgbmEucm09VFJVRSkgJT4lIGFzLmNoYXJhY3RlcigpXG5jYXQoXCItXCIsIG5fZXhjbHVkZWQsIFwicGF0aWVudHMgd2VyZSBleGNsdWRlZCBiYXNlZCBvbiBjaGFydCByZXZpZXcuXCIpXG5ybShuX2V4Y2x1ZGVkKVxuYGBgIn0= -->
+<pre class="r"><code>excluded_patients &lt;- full_merge_DF %&gt;% filter(!is.na(exclude))
+r_DF3 &lt;- full_merge_DF %&gt;% filter(is.na(exclude))
+excluded_patients &lt;- excluded_patients %&gt;% add_value_labels(reason_to_exclude = c( &quot;Seen earlier&quot; = &quot;1&quot;, &quot;Patient reports not being assaulted&quot; = &quot;2&quot;, &quot;not excluded&quot; = &quot;3&quot;, &quot;Psych&quot; = &quot;4&quot;, &quot;Eloped&quot; = &quot;5&quot;)) %&gt;% to_factor()
 excluded_patients %&gt;% group_by(reason_to_exclude) %&gt;% summarise(n=n())
 n_excluded &lt;-n_distinct(excluded_patients$pat_enc_csn_id, na.rm=TRUE) %&gt;% as.character()
 cat(&quot;-&quot;, n_excluded, &quot;patients were excluded based on chart review.&quot;)
-rm(n_excluded)```
-
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
-
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
-
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
-</code></pre>
+rm(n_excluded)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucG9zdF9XTyA8LSBmdWxsX21lcmdlX0RGICU+JSBmaWx0ZXIoZWRfYXJyaXZhbF9kYXRlID4gc2Jfc3RhcnQpICU+JSBmaWx0ZXIoYWdlID49IDE4KVxuYGBgIn0= -->
+<pre class="r"><code>post_WO &lt;- full_merge_DF %&gt;% filter(ed_arrival_date &gt; sb_start) %&gt;% filter(age &gt;= 18)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+</div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiWU5ISCBDb2hvcnQgRmlyc3QgQW5hbHlzaXMiCm91dHB1dDogaHRtbF9ub3RlYm9vawotLS0KCkZpcnN0IGNyZWF0aW9uIG9mIGNvaG9ydCBieSByZW1vdmluZyAKLW1pbm9ycwotZXhjbHVkZWQgcGF0aWVudHMKCmBgYHtyfQpleGNsdWRlZF9wYXRpZW50cyA8LSBleGNsdWRlZF9wYXRpZW50cyAlPiUgYWRkX3ZhbHVlX2xhYmVscyhyZWFzb25fdG9fZXhjbHVkZSA9IGMoICJTZWVuIGVhcmxpZXIiID0gIjEiLCAiUGF0aWVudCByZXBvcnRzIG5vdCBiZWluZyBhc3NhdWx0ZWQiID0gIjIiLCAibm90IGV4Y2x1ZGVkIiA9ICIzIiwgIlBzeWNoIiA9ICI0IiwgIkVsb3BlZCIgPSAiNSIpKSAlPiUgdG9fZmFjdG9yKCkKZXhjbHVkZWRfcGF0aWVudHMgJT4lIGdyb3VwX2J5KHJlYXNvbl90b19leGNsdWRlKSAlPiUgc3VtbWFyaXNlKG49bigpKQpuX2V4Y2x1ZGVkIDwtbl9kaXN0aW5jdChleGNsdWRlZF9wYXRpZW50cyRwYXRfZW5jX2Nzbl9pZCwgbmEucm09VFJVRSkgJT4lIGFzLmNoYXJhY3RlcigpCmNhdCgiLSIsIG5fZXhjbHVkZWQsICJwYXRpZW50cyB3ZXJlIGV4Y2x1ZGVkIGJhc2VkIG9uIGNoYXJ0IHJldmlldy4iKQpybShuX2V4Y2x1ZGVkKWBgYAoKQWRkIGEgbmV3IGNodW5rIGJ5IGNsaWNraW5nIHRoZSAqSW5zZXJ0IENodW5rKiBidXR0b24gb24gdGhlIHRvb2xiYXIgb3IgYnkgcHJlc3NpbmcgKkNtZCtPcHRpb24rSSouCgpXaGVuIHlvdSBzYXZlIHRoZSBub3RlYm9vaywgYW4gSFRNTCBmaWxlIGNvbnRhaW5pbmcgdGhlIGNvZGUgYW5kIG91dHB1dCB3aWxsIGJlIHNhdmVkIGFsb25nc2lkZSBpdCAoY2xpY2sgdGhlICpQcmV2aWV3KiBidXR0b24gb3IgcHJlc3MgKkNtZCtTaGlmdCtLKiB0byBwcmV2aWV3IHRoZSBIVE1MIGZpbGUpLiAKClRoZSBwcmV2aWV3IHNob3dzIHlvdSBhIHJlbmRlcmVkIEhUTUwgY29weSBvZiB0aGUgY29udGVudHMgb2YgdGhlIGVkaXRvci4gQ29uc2VxdWVudGx5LCB1bmxpa2UgKktuaXQqLCAqUHJldmlldyogZG9lcyBub3QgcnVuIGFueSBSIGNvZGUgY2h1bmtzLiBJbnN0ZWFkLCB0aGUgb3V0cHV0IG9mIHRoZSBjaHVuayB3aGVuIGl0IHdhcyBsYXN0IHJ1biBpbiB0aGUgZWRpdG9yIGlzIGRpc3BsYXllZC4KCg==</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiWU5ISCBDb2hvcnQgRmlyc3QgQW5hbHlzaXMiCm91dHB1dDogaHRtbF9ub3RlYm9vawotLS0KCkZpcnN0IGNyZWF0aW9uIG9mIGNvaG9ydCBieSByZW1vdmluZyAKLW1pbm9ycwotZXhjbHVkZWQgcGF0aWVudHMKCmBgYHtyfQpleGNsdWRlZF9wYXRpZW50cyA8LSBleGNsdWRlZF9wYXRpZW50cyAlPiUgYWRkX3ZhbHVlX2xhYmVscyhyZWFzb25fdG9fZXhjbHVkZSA9IGMoICJTZWVuIGVhcmxpZXIiID0gIjEiLCAiUGF0aWVudCByZXBvcnRzIG5vdCBiZWluZyBhc3NhdWx0ZWQiID0gIjIiLCAibm90IGV4Y2x1ZGVkIiA9ICIzIiwgIlBzeWNoIiA9ICI0IiwgIkVsb3BlZCIgPSAiNSIpKSAlPiUgdG9fZmFjdG9yKCkKZXhjbHVkZWRfcGF0aWVudHMgJT4lIGdyb3VwX2J5KHJlYXNvbl90b19leGNsdWRlKSAlPiUgc3VtbWFyaXNlKG49bigpKQpuX2V4Y2x1ZGVkIDwtbl9kaXN0aW5jdChleGNsdWRlZF9wYXRpZW50cyRwYXRfZW5jX2Nzbl9pZCwgbmEucm09VFJVRSkgJT4lIGFzLmNoYXJhY3RlcigpCmNhdCgiLSIsIG5fZXhjbHVkZWQsICJwYXRpZW50cyB3ZXJlIGV4Y2x1ZGVkIGJhc2VkIG9uIGNoYXJ0IHJldmlldy4iKQpybShuX2V4Y2x1ZGVkKQpgYGAKCiMjIGNyZWF0aW5nIGNvaG9ydHMKCmBgYHtyfQpleGNsdWRlZF9wYXRpZW50cyA8LSBmdWxsX21lcmdlX0RGICU+JSBmaWx0ZXIoIWlzLm5hKGV4Y2x1ZGUpKQpyX0RGMyA8LSBmdWxsX21lcmdlX0RGICU+JSBmaWx0ZXIoaXMubmEoZXhjbHVkZSkpCmV4Y2x1ZGVkX3BhdGllbnRzIDwtIGV4Y2x1ZGVkX3BhdGllbnRzICU+JSBhZGRfdmFsdWVfbGFiZWxzKHJlYXNvbl90b19leGNsdWRlID0gYyggIlNlZW4gZWFybGllciIgPSAiMSIsICJQYXRpZW50IHJlcG9ydHMgbm90IGJlaW5nIGFzc2F1bHRlZCIgPSAiMiIsICJub3QgZXhjbHVkZWQiID0gIjMiLCAiUHN5Y2giID0gIjQiLCAiRWxvcGVkIiA9ICI1IikpICU+JSB0b19mYWN0b3IoKQpleGNsdWRlZF9wYXRpZW50cyAlPiUgZ3JvdXBfYnkocmVhc29uX3RvX2V4Y2x1ZGUpICU+JSBzdW1tYXJpc2Uobj1uKCkpCm5fZXhjbHVkZWQgPC1uX2Rpc3RpbmN0KGV4Y2x1ZGVkX3BhdGllbnRzJHBhdF9lbmNfY3NuX2lkLCBuYS5ybT1UUlVFKSAlPiUgYXMuY2hhcmFjdGVyKCkKY2F0KCItIiwgbl9leGNsdWRlZCwgInBhdGllbnRzIHdlcmUgZXhjbHVkZWQgYmFzZWQgb24gY2hhcnQgcmV2aWV3LiIpCnJtKG5fZXhjbHVkZWQpCmBgYAoKYGBge3J9CnBvc3RfV08gPC0gZnVsbF9tZXJnZV9ERiAlPiUgZmlsdGVyKGVkX2Fycml2YWxfZGF0ZSA+IHNiX3N0YXJ0KSAlPiUgZmlsdGVyKGFnZSA+PSAxOCkKYGBgCgo=</div>
 
 
 

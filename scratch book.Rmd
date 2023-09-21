@@ -41,3 +41,10 @@ yes_no_var <-function(.data, z){
 abc <-C_F_Trauma_dxcat %>%  yes_no_var("Etoh")
 ```
 
+
+Find patients with MRIs
+```{r}
+
+MRI_pts <- C_F_Trauma %>% filter(str_detect(proc_display_name, "MRI")) %>% select(pat_enc_csn_id:proc_display_name) %>% distinct()
+```
+
