@@ -1,8 +1,8 @@
 ---
 title: "2020 to 2023 analysis w/ CR and insurance"
-output: 
-  html_notebook:
-  md_document:
+output:
+  md_document: default
+  html_notebook: default
 ---
 
 ## Setup
@@ -166,9 +166,7 @@ npts<- n_distinct(DF2$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
 nminors <-n_distinct(minors$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
 cat("-DF 2 is now the visit pull data with addended chart review data and additional insurance data. Total patients", npts,".   ")
 cat("-", nminors, "minor patients are to be excluded")
-
 rm(npts, nminors)
-
 ```
 
 #Main Dataframe (to be re-uploaded to onedrive)
@@ -197,9 +195,7 @@ r_DF1 <- DF2 %>%
       !is.na(primary_coverage_payor_name.x) ~ primary_coverage_payor_name.x,
       is.na(primary_coverage_payor_name.x) & !is.na(primary_coverage_payor_name.y) ~ primary_coverage_payor_name.y,
     )
-  ) # %>%
-  #no longer need: mutate(reason_to_exclude = case_when(is.na(reason_to_exclude) ~ 0, .default = reason_to_exclude))
-
+  ) 
 ```
 
 insurance categories:
