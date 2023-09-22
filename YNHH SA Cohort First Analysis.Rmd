@@ -5,33 +5,132 @@ output: html_notebook
 
 ```{r}
 library(readr)
+library(tidyverse)
+library(lubridate)
+library(gtsummary)
+library(gt)
+library(parsedate)
+library(janitor)
+library(labelled)
+library(parameters)
+library(survival)
+library(ggsurvfit)
 all_pts <- read_csv("SA_pts_reformatted")
 ```
+```{r outcome variables}
+# making outcome variable for if correct STI tx: CTX, azithromycin or doxy (and flagyl if female) are ordered 
+all_pts <- all_pts %>% mutate(
+  azithro_or_doxy = case_when(
+    azithromycin_ordered_num | doxycycline_ordered_num == 1 ~ 1,
+    azithromycin_ordered_num == 0 &
+      doxycycline_ordered_num == 0 ~ 0,
+    .default = 0
+  )
+) %>% mutate(
+  sti_tx = case_when(
+    gender == "Male" &
+      ceftriaxone_ordered_num == 1 & azithro_or_doxy == 1 ~ 1,
+    gender == "Male" &
+      ceftriaxone_ordered_num | azithro_or_doxy == 0  ~ 0,
+    gender == "Female" &
+      ceftriaxone_ordered_num == 1 &
+      azithro_or_doxy == 1 &
+      flagyl_or_metronidazole_ordered_num == 1 ~ 1,
+    gender == "Female" &
+      ceftriaxone_ordered_num |
+      azithro_or_doxy |
+      flagyl_or_metronidazole_ordered_num == 0 ~ 0,
+    .default = 0
+  ),
+  chem_ordered = case_when(
+    cmp_ordered_yn == "Y" | bmp_ordered_yn == "Y" ~ 1,
+    cmp_ordered_yn == "N" & bmp_ordered_yn == "N" ~ 0,
+    .default = NA
+  ),
+  abx_given = case_when(
+    ceftriaxone_ordered_num == 0 &
+      azithro_or_doxy == 0 &
+      flagyl_or_metronidazole_ordered_num == 0 ~ 0,
+    ceftriaxone_ordered_num == 1 |
+      azithro_or_doxy == 1 |
+      flagyl_or_metronidazole_ordered_num == 1 ~ 1
+  ),
+  lfts_ordered = case_when(
+    cmp_ordered_yn == "Y" | lft_ordered_yn == "Y" ~ 1,
+    cmp_ordered_yn == "N" & lft_ordered_yn == "N" ~ 0,
+    .default = NA
+  )
+) %>% mutate(
+  hiv_labs = case_when(
+    hiv_pep_kit_ordered_num == 1 &
+      chem_ordered == 1 & lfts_ordered == 1 ~ 1,
+    hiv_pep_kit_ordered_num == 1 &
+      (chem_ordered == 0| lfts_ordered == 0) ~ 0,
+    .default = 0
+  ),
+  prevent.preg = case_when(
+    plan_b_or_levonorgestrel_ordered_num == 1 | ulipristal_ordered_num == 1 ~ 1,
+    plan_b_or_levonorgestrel_ordered_num == 0 & ulipristal_ordered_num == 0 ~ 0,
+    .default = NA
+  )
 
-
-First creation of cohort by removing 
--minors
--excluded patients
-
-```{r}
-excluded_patients <- excluded_patients %>% add_value_labels(reason_to_exclude = c( "Seen earlier" = "1", "Patient reports not being assaulted" = "2", "not excluded" = "3", "Psych" = "4", "Eloped" = "5")) %>% to_factor()
-excluded_patients %>% group_by(reason_to_exclude) %>% summarise(n=n())
-n_excluded <-n_distinct(excluded_patients$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
-cat("-", n_excluded, "patients were excluded based on chart review.")
-rm(n_excluded)
+) %>% 
+  mutate(
+    tbl_sti_tx = case_when(
+      sti_tx == 1 & abx_given == 1 ~ 1,
+      sti_tx == 0 & abx_given == 1 ~ 0,
+      .default = NA
+    ),
+    tbl_hiv_labs = case_when(
+      hiv_pep_kit_ordered_num == 1 & hiv_labs == 1 ~ 1,
+       hiv_pep_kit_ordered_num == 1 & hiv_labs == 0 ~ 0,
+      .default = NA
+    ),
+    tbl_preg_test = case_when(
+      female_u55 == 1 & pregnancy_test_ordered_num == 1 ~ 1,
+      female_u55 == 1 & pregnancy_test_ordered_num == 0 ~ 0,
+      .default = NA
+    ),
+      tbl_prevent_preg = case_when(
+      female_u55 == 1 & prevent.preg == 1 ~ 1,
+      female_u55 == 1 & prevent.preg == 0 ~ 0,
+      .default = NA)
+  )
 ```
 
 ## creating cohorts
 
+###First creation of cohort by removing:
+_-patients before story board start date 2021-09-08_
+_-minors_
+_-excluded patients_
+
 ```{r}
-excluded_patients <- full_merge_DF %>% filter(!is.na(exclude))
-r_DF3 <- full_merge_DF %>% filter(is.na(exclude))
+cohort.1 <- all_pts %>% filter(ed_arrival_date > sb_start) %>% filter(age > 17)
+excluded_patients <- cohort.1  %>% filter(!is.na(exclude))
+cohort.2 <- cohort.1  %>% filter(is.na(exclude))
 excluded_patients <- excluded_patients %>% add_value_labels(reason_to_exclude = c( "Seen earlier" = "1", "Patient reports not being assaulted" = "2", "not excluded" = "3", "Psych" = "4", "Eloped" = "5")) %>% to_factor()
 excluded_patients %>% group_by(reason_to_exclude) %>% summarise(n=n())
 n_excluded <-n_distinct(excluded_patients$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
 cat("-", n_excluded, "patients were excluded based on chart review.")
 rm(n_excluded)
 ```
+
+```{r}
+table.1 <- cohort.2 %>% 
+  select(pathway, age, age_3_group, female, race_bwo) %>% 
+  set_variable_labels(age = "Age", age_3_group = "Age Group", female = "Female", race_bwo = "Race") %>% 
+  tbl_summary(
+    by = pathway,
+    missing = "ifany", 
+    percent = "column",
+    statistic = (age ~ "{median} ({p25}, {p75})")
+  ) %>% 
+  add_overall() %>% add_p() %>%   separate_p_footnotes() %>%  as_gt() 
+table.1
+
+```
+
 
 ```{r}
 post_WO <- full_merge_DF %>% filter(ed_arrival_date > sb_start) %>% filter(age >= 18)
