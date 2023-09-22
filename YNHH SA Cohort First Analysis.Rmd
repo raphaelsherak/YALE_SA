@@ -136,7 +136,7 @@ cat("-", n_excluded, "patients were excluded based on chart review.")
 rm(n_excluded)
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 table.1 <- cohort.2 %>% 
   select(pathway, age, age_3_group, female, race_bwo, contacted_advocate, sane_kit_YN, sane_kit_missed) %>% 
   set_variable_labels(age = "Age", age_3_group = "Age Group", female = "Female", race_bwo = "Race") %>% 
