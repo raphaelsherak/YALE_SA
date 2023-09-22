@@ -155,8 +155,6 @@ cn_chart_review <- cn_chart_review %>%
 ```{r}
 
 minors <- rf_visit_pull %>% filter(age < 18)
-#adult_visit_pull <- rf_visit_pull %>% filter(age >= 18) %>%  mutate(ed_arrival_date = date(arrive_dt))
-#now joining in minors as well with plan to filter them out at the end
 DF1 <- left_join(rf_visit_pull, cn_chart_review, by = join_by(pat_enc_csn_id == pat_enc_csn_id, ed_arrival_date == ed_arrival_date))
 s_insurance <- cn_insurance %>% select(pat_enc_csn_id, age, primary_coverage_payor_name, primary_coverage_benefit_plan_name, ed_arrival_year, ed_arrival_month) %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id))
 
@@ -167,6 +165,14 @@ nminors <-n_distinct(minors$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
 cat("-DF 2 is now the visit pull data with addended chart review data and additional insurance data. Total patients", npts,".   ")
 cat("-", nminors, "minor patients are to be excluded")
 rm(npts, nminors)
+
+excluded_patients <- DF2  %>% filter(!is.na(exclude))
+cohort.2 <- DF2  %>% filter(is.na(exclude))
+excluded_patients <- excluded_patients %>% add_value_labels(reason_to_exclude = c( "Seen earlier" = "1", "Patient reports not being assaulted" = "2", "not excluded" = "3", "Psych" = "4", "Eloped" = "5")) %>% to_factor()
+excluded_patients %>% group_by(reason_to_exclude) %>% summarise(n=n())
+n_excluded <-n_distinct(excluded_patients$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
+cat("-", n_excluded, "patients were excluded based on chart review.")
+rm(n_excluded)
 ```
 
 #Main Dataframe (to be re-uploaded to onedrive)
@@ -323,6 +329,6 @@ full_merge_reduced <- full_merge_DF %>% select(all_of(final_variables))
 makes CSV for patients
 
 ```{r}
-write_csv(full_merge_reduced, "SA_pts_reformatted")
+write_csv(full_merge_reduced, "SA_pts_reformatted.csv")
 ```
 
