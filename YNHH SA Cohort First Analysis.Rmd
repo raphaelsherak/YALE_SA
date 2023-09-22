@@ -1,9 +1,9 @@
 ---
 title: "YNHH Cohort First Analysis"
-output: html_notebook
+output: github_document
 ---
 
-```{r}
+```{r include=FALSE}
 library(readr)
 library(tidyverse)
 library(lubridate)
@@ -23,7 +23,7 @@ pathway_start <- mdy("7/13/21", tz = time_zone)
 #Story board notification went live on 9/8/21
 sb_start <- mdy("9/8/21", tz = time_zone)
 ```
-```{r outcome variables}
+```{r outcome variables, include=FALSE}
 # making outcome variable for if correct STI tx: CTX, azithromycin or doxy (and flagyl if female) are ordered 
 all_pts <- all_pts %>% mutate(
   azithro_or_doxy = case_when(
@@ -129,16 +129,16 @@ _-excluded patients_
 cohort.1 <- all_pts %>% filter(ed_arrival_date > sb_start) %>% filter(age > 17)
 excluded_patients <- cohort.1  %>% filter(!is.na(exclude))
 cohort.2 <- cohort.1  %>% filter(is.na(exclude))
-excluded_patients <- excluded_patients %>% add_value_labels(reason_to_exclude = c( "Seen earlier" = 1 , "Patient reports not being assaulted" = 2, "Psych" = 3, "not excluded" = 3, "Eloped" = 5)) %>% to_factor()
+excluded_patients <- excluded_patients %>% add_value_labels(reason_to_exclude = c( "Seen earlier" = 1 , "Patient reports not being assaulted" = 2, "Psych" = 3, "not excluded" = 4, "Eloped" = 5)) %>% to_factor()
 excluded_patients %>% group_by(reason_to_exclude) %>% summarise(n=n())
 n_excluded <-n_distinct(excluded_patients$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
 cat("-", n_excluded, "patients were excluded based on chart review.")
 rm(n_excluded)
 ```
 
-```{r}
+```{r echo=FALSE}
 table.1 <- cohort.2 %>% 
-  select(pathway, age, age_3_group, female, race_bwo, trauma_case_yn, contacted_advocate, sane_kit_YN, sane_kit_missed) %>% 
+  select(pathway, age, age_3_group, female, race_bwo, contacted_advocate, sane_kit_YN, sane_kit_missed) %>% 
   set_variable_labels(age = "Age", age_3_group = "Age Group", female = "Female", race_bwo = "Race") %>% 
   tbl_summary(
     by = pathway,
