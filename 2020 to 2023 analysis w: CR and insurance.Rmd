@@ -310,6 +310,13 @@ short_trauma_cat<-left_join(short_trauma_cat, g, by = join_by(pat_enc_csn_id)) %
 rm(a,b,c,d,e,f,g)
 ```
 
+Fix *NA*s - replacing them w/ 0s for trauma chart dx. 
+```{r}
+short_trauma_cat <- short_trauma_cat %>% 
+  replace_na(list(Etoh = 0, Pain = 0, Psych = 0, Drugs = 0, Minor_injury = 0, Major_injury = 0))
+
+```
+
 ## joining trauma/dx/ esi data with other joined DF
 
 ```{r}
