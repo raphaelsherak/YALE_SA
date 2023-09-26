@@ -23,6 +23,7 @@ pathway_start <- mdy("7/13/21", tz = time_zone)
 #Story board notification went live on 9/8/21
 sb_start <- mdy("9/8/21", tz = time_zone)
 ```
+
 ```{r outcome variables, include=FALSE}
 # making outcome variable for if correct STI tx: CTX, azithromycin or doxy (and flagyl if female) are ordered 
 all_pts <- all_pts %>% mutate(
@@ -89,7 +90,7 @@ all_pts <- all_pts %>% mutate(
     sane_kit_done == 1 ~ "Yes",
     sane_kit_done == 2 ~ "Offered, but declined",
     sane_kit_done == 3 ~ "Outside 120 hr Window",
-    sane_kit_done == 4 ~ "Note done due to concurrent psychiatric concerns"
+    sane_kit_done == 4 ~ "Not done due to concurrent psychiatric concerns"
   ),
   sane_kit_missed = case_when(
     sane_kit_done == 0 ~ "Sane kit not done/documented",
@@ -138,7 +139,7 @@ rm(n_excluded)
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 table.1 <- cohort.2 %>% 
-  select(pathway, age, age_3_group, female, race_bwo, contacted_advocate, sane_kit_YN, sane_kit_missed) %>% 
+  select(pathway, age, age_3_group, female, race_bwo, contacted_advocate, sane_kit_YN, sane_kit_missed, trauma_case_yn, time_since_sexual_assault_if_number_k_is_y) %>% 
   set_variable_labels(age = "Age", age_3_group = "Age Group", female = "Female", race_bwo = "Race") %>% 
   tbl_summary(
     by = pathway,
@@ -150,3 +151,6 @@ table.1 <- cohort.2 %>%
 table.1
 
 ```
+# Hypothesis: those with physical trauma that are comming through EMS leading to a bimodal distribution for LOS. 
+-Control for traumatic injuries (trauma activation, x ray, CT scan, trauma dx)
+-Reporting / disclosure after arrival (was CC SA?)

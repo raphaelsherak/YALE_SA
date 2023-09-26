@@ -146,7 +146,12 @@ levels(rf_visit_pull$pathway) <-
   list("Didn't Use Pathway" = "N", "Used Pathway" = "Y")
 # need to also reformat cn_chart_review ed arrival date to get same format
 cn_chart_review <- cn_chart_review %>% 
-  mutate(ed_arrival_date = as_date(ed_arrival_date))
+  mutate(ed_arrival_date = as_date(ed_arrival_date)) %>% 
+  mutate(under120h = case_when(
+    time_since_sexual_assault_if_number_k_is_y == 0 |  time_since_sexual_assault_if_number_k_is_y == 1 ~ TRUE,
+    time_since_sexual_assault_if_number_k_is_y == 2 |  time_since_sexual_assault_if_number_k_is_y == 3 ~ FALSE,
+    .default = NA
+  ))
 
 ```
 
@@ -155,7 +160,7 @@ cn_chart_review <- cn_chart_review %>%
 ```{r}
 
 minors <- rf_visit_pull %>% filter(age < 18)
-DF1 <- left_join(rf_visit_pull, cn_chart_review, by = join_by(pat_enc_csn_id == pat_enc_csn_id, ed_arrival_date == ed_arrival_date))
+DF1 <- left_join(rf_visit_pull, cn_chart_review, by = join_by(pat_enc_csn_id == pat_enc_csn_id))
 s_insurance <- cn_insurance %>% select(pat_enc_csn_id, age, primary_coverage_payor_name, primary_coverage_benefit_plan_name, ed_arrival_year, ed_arrival_month) %>% mutate(pat_enc_csn_id = as.character(pat_enc_csn_id))
 
 DF2 <- left_join(DF1, s_insurance, by = join_by(age.x == age, ed_arrival_month == ed_arrival_month, pat_enc_csn_id == pat_enc_csn_id)) %>% rename(age = age.x)
@@ -179,12 +184,8 @@ rm(n_excluded)
 
 ```{r}
 variables1 <- colnames(cn_chart_review)
-variables2 <-
-  DF2 %>% select(gender,arrive_dt:primary_coverage_benefit_plan_name.y) %>% colnames()
-variables3 <-
-  DF2 %>% select(ends_with(c(
-    "ts", "num", "id", "yn", "name", "dt", "time", "zip", "name"
-  ))) %>% colnames()
+variables2 <-DF2 %>% select(gender,arrive_dt:primary_coverage_benefit_plan_name.y) %>% colnames()
+variables3 <-DF2 %>% select(ends_with(c("ts", "num", "id", "yn", "name", "dt", "time", "zip", "name"))) %>% colnames()
 vars <- c(variables1, variables2, variables3)
 #r stands for reduced
 r_DF1 <- DF2 %>%
