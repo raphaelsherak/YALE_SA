@@ -116,7 +116,13 @@ all_pts <- all_pts %>% mutate(
       tbl_prevent_preg = case_when(
       female_u55 == 1 & prevent.preg == 1 ~ 1,
       female_u55 == 1 & prevent.preg == 0 ~ 0,
-      .default = NA)
+      .default = NA
+      ),
+    under120h = case_when(
+    time_since_sexual_assault_if_number_k_is_y == 0 |  time_since_sexual_assault_if_number_k_is_y == 1 ~ TRUE,
+    time_since_sexual_assault_if_number_k_is_y == 2 |  time_since_sexual_assault_if_number_k_is_y == 3 ~ FALSE,
+    .default = NA
+  )
   )
 ```
 
