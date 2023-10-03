@@ -178,4 +178,15 @@ table.2 <- cohort.2 %>% select(pathway, contacted_advocate, abx_given, sti_tx, h
     statistic =list(c(hiv_labs, prevent.preg, sti_tx, pregnancy_test_ordered_num) ~ "{n}" ) ) %>% as_gt()
 table.2
 ```
+Primary outcome- ADVOCATE CONTACTED
+```{r}
+cohort.2$race_bwo <- as_factor(cohort.2$race_bwo)
+cohort.2$race_bwo <- relevel(cohort.2$race_bwo, ref= "White")
+cohort.2$contacted_advocate <- (as_factor(cohort.2$contacted_advocate))
+cohort.2$contacted_advocate <- relevel(cohort.2$contacted_advocate, ref= "No Documentation of Pt Advocate")
+model.primary <-  glm(contacted_advocate ~ pathway + age + female + race_bwo + insurance + english,  family = "binomial", data = cohort.2)
+primary.results <- tbl_regression(model.primary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
+summary(model.primary)
+primary.results
+```
 
