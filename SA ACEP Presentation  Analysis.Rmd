@@ -124,7 +124,13 @@ all_pts <- all_pts %>% mutate(
     time_since_sexual_assault_if_number_k_is_y == 0 |  time_since_sexual_assault_if_number_k_is_y == 1 ~ TRUE,
     time_since_sexual_assault_if_number_k_is_y == 2 |  time_since_sexual_assault_if_number_k_is_y == 3 ~ FALSE,
     .default = NA
-  )
+  ),
+  english = case_when(
+    patient_language == "English" ~ 1,
+    is.na(patient_language) ~ NA,
+    .default = 0
+  ),
+  ambulance = if_else(method_of_arrival == 1, 1, 0)
   )
 ```
 
@@ -151,8 +157,8 @@ rm(n_excluded, number_of_minors)
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 table.1 <- cohort.2 %>% 
-  select(pathway, age, female, race_bwo, under120h) %>% 
-  set_variable_labels(age = "Age",  female = "Female", race_bwo = "Race", under120h = "Presented within 120 hours after assault") %>% 
+  select(pathway, age, female, race_bwo, under120h, english, ambulance, insurance) %>% 
+  set_variable_labels(age = "Age",  female = "Female", race_bwo = "Race", under120h = "Presented within 120 of assault", ambulance = "Arrived by EMS", english = "English speaking", insurance = "Insurance") %>% 
   tbl_summary(
     by = pathway,
     missing = "ifany", 
