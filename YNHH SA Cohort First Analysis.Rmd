@@ -15,7 +15,8 @@ library(labelled)
 library(parameters)
 library(survival)
 library(ggsurvfit)
-all_pts <- read_csv("SA_pts_reformatted")
+library(table1)
+all_pts <- read_csv("SA_pts_reformatted.csv")
 # set TZ to east coast standard
 time_zone <- "America/New_York"
 #pathway went live on 7/13/21
@@ -94,7 +95,8 @@ all_pts <- all_pts %>% mutate(
   ),
   sane_kit_missed = case_when(
     sane_kit_done == 0 ~ "Sane kit not done/documented",
-    sane_kit_done %in% c(1,2,3) ~ "Sane kit done/ Sane kit not indicated"
+    sane_kit_done %in% c(1,2,3) ~ "Sane kit done/ Sane kit not indicated",
+    sane_kit_done == 4 ~ "Not done due to concurrent psychiatric concerns"
   )
 ) %>% 
   mutate(
@@ -145,7 +147,7 @@ rm(n_excluded)
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 table.1 <- cohort.2 %>% 
-  select(pathway, age, age_3_group, female, race_bwo, contacted_advocate, sane_kit_YN, sane_kit_missed, trauma_case_yn, time_since_sexual_assault_if_number_k_is_y) %>% 
+  select(pathway, age, age_3_group, female, race_bwo, contacted_advocate, sane_kit_YN, sane_kit_missed, trauma_case_yn, time_since_sexual_assault_if_number_k_is_y, under120h) %>% 
   set_variable_labels(age = "Age", age_3_group = "Age Group", female = "Female", race_bwo = "Race") %>% 
   tbl_summary(
     by = pathway,
@@ -157,6 +159,26 @@ table.1 <- cohort.2 %>%
 table.1
 
 ```
+alternative table 1
+```{r}
+cohort.2$pathway <- factor(cohort.2$pathway, ordered = FALSE)
+
+table1(~ age + age_group + gender + sane_kit_missed + under120h | pathway, data = cohort.2, render = render.default)
+```
+
+```{r}
+cohort.u120 <- cohort.2 %>% filter(under120h == TRUE)
+cohort.u120$contacted_advocate <- as_factor(cohort.u120$contacted_advocate)
+cohort.u120$contacted_advocate <- relevel(cohort.u120$contacted_advocate, ref= "No Documentation of Pt Advocate")
+cohort.u120$race_bwo <- as_factor(cohort.u120$race_bwo)
+cohort.u120$race_bwo <- relevel(cohort.u120$race_bwo, ref= "White")
+model.primary <-  glm(contacted_advocate ~ pathway + age + female + race_bwo, family = "binomial", data = cohort.u120)
+primary.results <- tbl_regression(model.primary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds that STI meds ordered correctly") 
+summary(model.primary)
+primary.results
+```
+
+
 # Hypothesis: those with physical trauma that are comming through EMS leading to a bimodal distribution for LOS. 
 -Control for traumatic injuries (trauma activation, x ray, CT scan, trauma dx)
 -Reporting / disclosure after arrival (was CC SA?)

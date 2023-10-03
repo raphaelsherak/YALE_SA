@@ -313,19 +313,19 @@ rm(a,b,c,d,e,f,g)
 Fix *NA*s - replacing them w/ 0s for trauma chart dx. 
 ```{r}
 short_trauma_cat <- short_trauma_cat %>% 
-  replace_na(list(Etoh = 0, Pain = 0, Psych = 0, Drugs = 0, Minor_injury = 0, Major_injury = 0))
+  replace_na(list(Etoh = 0, Pain = 0, Psych = 0, Drugs = 0, Minor_injury = 0, Major_injury = 0, SDOH = 0))
 
 ```
 
 ## joining trauma/dx/ esi data with other joined DF
 
 ```{r}
-full_merge_DF <- left_join(r_DF2, short_trauma_cat, by = join_by(pat_enc_csn_id)) %>% distinct() %>% select(-patient_language.y) %>% rename(patient_language = patient_language.x, mrn = mrn.x, patient_birth_date = patient_birth_date.x)
+full_merge_DF <- left_join(r_DF2, short_trauma_cat, by = join_by(pat_enc_csn_id)) %>% distinct() %>% select(-patient_language.y) %>% rename(patient_language = patient_language.x, mrn = mrn.x, patient_birth_date = patient_birth_date.x,ed_arrival_date = ed_arrival_date.x)
 
 ```
 now to reduce the # of variables from 183 to something more managable
 ```{r}
-final_variables <-full_merge_DF %>% select(1:2,15:89,103:125,139:143, 157:158,174:183) %>% select(-ends_with(".y")) %>%  colnames()
+final_variables <-full_merge_DF %>% select(1:2,16:41,44:91,105:127,141:145, 159:160,176:185) %>% select(-ends_with(".y")) %>%  colnames()
 
 full_merge_reduced <- full_merge_DF %>% select(all_of(final_variables))
 ```
