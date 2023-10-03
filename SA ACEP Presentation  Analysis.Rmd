@@ -94,8 +94,8 @@ all_pts <- all_pts %>% mutate(
     sane_kit_done == 4 ~ "Not done due to concurrent psychiatric concerns"
   ),
   sane_kit_missed = case_when(
-    sane_kit_done == 0 ~ "Sane kit not done/documented",
-    sane_kit_done %in% c(1,2,3) ~ "Sane kit done/ Sane kit not indicated",
+    sane_kit_done == 0 ~ "SANE kit not done/documented",
+    sane_kit_done %in% c(1,2,3) ~ "SANE kit done/not indicated",
     sane_kit_done == 4 ~ "Not done due to concurrent psychiatric concerns"
   )
 ) %>% 
@@ -130,7 +130,8 @@ all_pts <- all_pts %>% mutate(
     is.na(patient_language) ~ NA,
     .default = 0
   ),
-  ambulance = if_else(method_of_arrival == 1, 1, 0)
+  ambulance = if_else(method_of_arrival == 1, 1, 0),
+  relationship_with_patient = factor(relationship_with_patient, levels = c(0,1,2,3,4,NA), labels = c("Unknown","Aqauintance", "Family member", "Stranger", "Intimate Partner", NA), exclude = NULL, ordered = FALSE )
   )
 ```
 
@@ -157,8 +158,8 @@ rm(n_excluded, number_of_minors)
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 table.1 <- cohort.2 %>% 
-  select(pathway, age, female, race_bwo, under120h, english, ambulance, insurance) %>% 
-  set_variable_labels(age = "Age",  female = "Female", race_bwo = "Race", under120h = "Presented within 120 of assault", ambulance = "Arrived by EMS", english = "English speaking", insurance = "Insurance") %>% 
+  select(pathway, age, female, race_bwo, under120h, english, ambulance, insurance, relationship_with_patient) %>% 
+  set_variable_labels(age = "Age",  female = "Female", race_bwo = "Race", under120h = "Presented within 120 of assault", ambulance = "Arrived by EMS", english = "English speaking", insurance = "Insurance", relationship_with_patient = "Relation of assailant to patient") %>% 
   tbl_summary(
     by = pathway,
     missing = "ifany", 
@@ -169,3 +170,12 @@ table.1 <- cohort.2 %>%
 table.1
 
 ```
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+table.2 <- cohort.2 %>% select(pathway, contacted_advocate, abx_given, sti_tx, hiv_pep_kit_ordered_num, hiv_labs, female_u55, pregnancy_test_ordered_num, prevent.preg, sane_kit_YN, sane_kit_missed, follow_up_at_discharge) %>% 
+ set_variable_labels(contacted_advocate = "Documentation of advocate contacted", sti_tx ="Recieved CDC reccomended STI prophalaxis" , abx_given = "Received any antibiotics", hiv_pep_kit_ordered_num = "HIV PEP ordered", hiv_labs = "Had indicated labs drawn if given HIV PEP", female_u55 = "Female under 55", pregnancy_test_ordered_num = "Pregnancy test ordered", prevent.preg = "Pregnancy prophalaxis ordered", sane_kit_YN = "SANE kit done", sane_kit_missed = "Under 120 hours and SANE kit not done", follow_up_at_discharge = "Has after discharge follow up") %>% tbl_summary(
+    by = pathway,
+    percent = "column",
+    statistic =list(c(hiv_labs, prevent.preg, sti_tx, pregnancy_test_ordered_num) ~ "{n}" ) ) %>% as_gt()
+table.2
+```
+
