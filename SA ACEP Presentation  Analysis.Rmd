@@ -131,8 +131,21 @@ all_pts <- all_pts %>% mutate(
     .default = 0
   ),
   ambulance = if_else(method_of_arrival == 1, 1, 0),
-  relationship_with_patient = factor(relationship_with_patient, levels = c(0,1,2,3,4,NA), labels = c("Unknown","Aqauintance", "Family member", "Stranger", "Intimate Partner", NA), exclude = NULL, ordered = FALSE )
+  relationship_with_patient = factor(relationship_with_patient, levels = c(0,1,2,3,4,NA), labels = c("Unknown","Aqauintance", "Family member", "Stranger", "Intimate Partner", NA), exclude = NULL, ordered = FALSE ),
+  insurance_3 = case_when(
+    insurance == "Private Insurance" ~ "Private",
+    insurance %in% c("Medicaid", "Medicare", "Sexual Assault") ~ "Public",
+    insurance == "Uninsured/Self-Pay" ~ "Uninsured"
   )
+  ) %>% 
+    mutate(relationship_4_with_pt = case_when(
+    relationship_with_patient == "Family member" ~ "Family",
+    relationship_with_patient == "Aqauintance" ~ "Aquaintaince",
+    relationship_with_patient == "Intimate Partner" ~ "Intimate Partner",
+    relationship_with_patient == "Unknown" |relationship_with_patient == "Stranger" ~ "Stranger/Unknown"
+  ))
+all_pts$insurance_3 <- as_factor(all_pts$insurance_3)
+all_pts$insurance_3 <- relevel(all_pts$insurance_3, ref = "Public")
 ```
 
 ## creating cohorts
@@ -178,15 +191,65 @@ table.2 <- cohort.2 %>% select(pathway, contacted_advocate, abx_given, sti_tx, h
     statistic =list(c(hiv_labs, prevent.preg, sti_tx, pregnancy_test_ordered_num) ~ "{n}" ) ) %>% as_gt()
 table.2
 ```
-Primary outcome- ADVOCATE CONTACTED
+
+# Primary outcome- ADVOCATE CONTACTED
 ```{r}
 cohort.2$race_bwo <- as_factor(cohort.2$race_bwo)
 cohort.2$race_bwo <- relevel(cohort.2$race_bwo, ref= "White")
 cohort.2$contacted_advocate <- (as_factor(cohort.2$contacted_advocate))
 cohort.2$contacted_advocate <- relevel(cohort.2$contacted_advocate, ref= "No Documentation of Pt Advocate")
-model.primary <-  glm(contacted_advocate ~ pathway + age + female + race_bwo + insurance + english,  family = "binomial", data = cohort.2)
+model.primary <-  glm(contacted_advocate ~ pathway + age + female + race_bwo + insurance_3 + english,  family = "binomial", data = cohort.2)
 primary.results <- tbl_regression(model.primary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
 summary(model.primary)
 primary.results
+```
+
+## Primary outcome, sub-outcome- ADVOCATE CONTACTED *IF* SANE KIT DONE
+
+```{r}
+cohort.2$race_bwo <- as_factor(cohort.2$race_bwo)
+cohort.2$race_bwo <- relevel(cohort.2$race_bwo, ref= "White")
+cohort.2$contacted_advocate <- (as_factor(cohort.2$contacted_advocate))
+cohort.2$contacted_advocate <- relevel(cohort.2$contacted_advocate, ref= "No Documentation of Pt Advocate")
+cohort.2.2 <- cohort.2 %>% filter(sane_kit_done == 1) #156 patients
+model.primary.2 <-  glm(contacted_advocate ~ pathway + age + female + race_bwo + insurance_3 + english,  family = "binomial", data = cohort.2.2)
+primary.results.2 <- tbl_regression(model.primary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
+summary(model.primary.2)
+primary.results.2
+```
+
+# Secondary Outcome: SANE Kit Done/ offered if eligible
+restricted to patients presenting within 120 hours
+Control for age, race (black, white, other), sex, patient language, Relationship with Patient, ICD10 with psych, ICD10 with etch, ICD10 with substance use, Insurance
+Things I care less about: ICD10 with any traumatic injury, ICD10 with major trauma, ICD10 with minor trauma, trauma consult, Method of Arrival, ESI, 
+```{r}
+#removing patients where they presented > 120 hours into stay OR did not qualify for sane kit because of concurrent psych issues.
+cohort.3 <- cohort.2 %>% filter(under120h == TRUE, sane_kit_missed != "Not done due to concurrent psychiatric concerns") %>% 
+  mutate(sane_kit_offered = if_else(sane_kit_done == 0, "No", "Offered"))
+cohort.3$race_bwo <- as_factor(cohort.3$race_bwo)
+cohort.3$race_bwo <- relevel(cohort.3$race_bwo, ref= "White")
+cohort.3$sane_kit_offered <- as_factor(cohort.3$sane_kit_offered)
+cohort.3$sane_kit_offered <- relevel(cohort.3$sane_kit_offered, ref = "No")
+cohort.3$relationship_4_with_pt <- as_factor(cohort.3$relationship_4_with_pt)
+cohort.3$relationship_4_with_pt <- relevel(cohort.3$relationship_4_with_pt, ref = "Stranger/Unknown")
+model.secondary.1 <-  glm(sane_kit_offered ~ pathway + age + female + race_bwo + insurance_3 + english + relationship_4_with_pt,  family = "binomial", data = cohort.3)
+secondary.results.1 <- tbl_regression(model.secondary.1, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of Offering SANE Kit if Eligible") 
+summary(model.secondary.1)
+secondary.results.1
+```
+
+Pregnancy related outcomes
+*note- used 120 hour as threshold for eligibility for EC since ulipristol can be used up to 120 hours*
+```{r}
+tertiary.cohort <- cohort.2 %>%  filter(female_u55 == 1)
+quatrinary.cohort <- tertiary.cohort %>% filter(under120h = TRUE)
+model.tertiary <-  glm(pregnancy_test_ordered_num ~ pathway + age + race_bwo + english + ambulance, family = "binomial", data = tertiary.cohort)
+summary(model.tertiary)
+tertiary.results <- tbl_regression(model.tertiary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Secondary Outcome (did women under 55 get preg test?)")
+tertiary.results
+model.quatro <-  glm(prevent.preg ~ pathway + age + race_bwo +  english + ambulance, family = "binomial", data = quatrinary.cohort)
+summary(model.quatro)
+quatro.results <- tbl_regression(model.quatro, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Secondary Outcome (did women under 55 have pregnancy prevention ordered?)")
+quatro.results
 ```
 
