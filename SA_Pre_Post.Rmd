@@ -177,7 +177,7 @@ rm(n_excluded, number_of_minors, n_between)
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-table.1 <- pp.cohort.2 %>% 
+pp.table.1 <- pp.cohort.2 %>% 
   select(exposure.char, pathway, age, female, race_bwo, under120h, english, ambulance, insurance, relationship_with_patient) %>% 
   set_variable_labels(age = "Age",  female = "Female", race_bwo = "Race", under120h = "Presented within 120 of assault", ambulance = "Arrived by EMS", english = "English speaking", insurance = "Insurance", relationship_with_patient = "Relation of assailant to patient") %>% 
   tbl_summary(
@@ -187,16 +187,16 @@ table.1 <- pp.cohort.2 %>%
     statistic = (age ~ "{median} ({p25}, {p75})")
   ) %>% 
   add_p() %>% separate_p_footnotes() %>%  as_gt() 
-table.1
+pp.table.1
 
 ```
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-table.2 <- pp.cohort.2 %>% select(exposure.char, contacted_advocate, abx_given, sti_tx, hiv_pep_kit_ordered_num, hiv_labs, female_u55, pregnancy_test_ordered_num, prevent.preg, sane_kit_YN, sane_kit_missed, follow_up_at_discharge) %>% 
+pp.table.2 <- pp.cohort.2 %>% select(exposure.char, contacted_advocate, abx_given, sti_tx, hiv_pep_kit_ordered_num, hiv_labs, female_u55, pregnancy_test_ordered_num, prevent.preg, sane_kit_YN, sane_kit_missed, follow_up_at_discharge) %>% 
  set_variable_labels(contacted_advocate = "Documentation of advocate contacted", sti_tx ="Recieved CDC reccomended STI prophalaxis" , abx_given = "Received any antibiotics", hiv_pep_kit_ordered_num = "HIV PEP ordered", hiv_labs = "Had indicated labs drawn if given HIV PEP", female_u55 = "Female under 55", pregnancy_test_ordered_num = "Pregnancy test ordered", prevent.preg = "Pregnancy prophalaxis ordered", sane_kit_YN = "SANE kit done", sane_kit_missed = "Under 120 hours and SANE kit not done", follow_up_at_discharge = "Has after discharge follow up") %>% tbl_summary(
     by = exposure.char,
     percent = "column",
     statistic =list(c(hiv_labs, prevent.preg, sti_tx, pregnancy_test_ordered_num) ~ "{n}" ) ) %>% as_gt()
-table.2
+pp.table.2
 ```
 
 # Primary outcome- ADVOCATE CONTACTED
@@ -205,10 +205,10 @@ pp.cohort.2$race_bwo <- as_factor(pp.cohort.2$race_bwo)
 pp.cohort.2$race_bwo <- relevel(pp.cohort.2$race_bwo, ref= "White")
 pp.cohort.2$contacted_advocate <- (as_factor(pp.cohort.2$contacted_advocate))
 pp.cohort.2$contacted_advocate <- relevel(pp.cohort.2$contacted_advocate, ref= "No Documentation of Pt Advocate")
-model.primary <-  glm(contacted_advocate ~ exposure.num + age + female + race_bwo + insurance_3 + english + relationship_4_with_pt,  family = "binomial", data = pp.cohort.2)
-primary.results <- tbl_regression(model.primary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
-summary(model.primary)
-primary.results
+pp.model.primary <-  glm(contacted_advocate ~ exposure.num + age + female + race_bwo + insurance_3 + english + relationship_4_with_pt,  family = "binomial", data = pp.cohort.2)
+pp.primary.results <- tbl_regression(pp.model.primary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
+summary(pp.model.primary)
+pp.primary.results
 ```
 
 ## Primary outcome, sub-outcome- ADVOCATE CONTACTED *IF* SANE KIT DONE
@@ -219,10 +219,10 @@ pp.cohort.2$race_bwo <- relevel(pp.cohort.2$race_bwo, ref= "White")
 pp.cohort.2$contacted_advocate <- (as_factor(pp.cohort.2$contacted_advocate))
 pp.cohort.2$contacted_advocate <- relevel(pp.cohort.2$contacted_advocate, ref= "No Documentation of Pt Advocate")
 pp.cohort.2.2 <- pp.cohort.2 %>% filter(sane_kit_done == 1) #156 patients
-model.primary.2 <-  glm(exposure.num ~ pathway + age + female + race_bwo + insurance_3 + english,  family = "binomial", data = pp.cohort.2.2)
-primary.results.2 <- tbl_regression(model.primary.2, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
-summary(model.primary.2)
-primary.results.2
+pp.model.primary.2 <-  glm(exposure.num ~ pathway + age + female + race_bwo + insurance_3 + english,  family = "binomial", data = pp.cohort.2.2)
+pp.primary.results.2 <- tbl_regression(pp.model.primary.2, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
+summary(pp.model.primary.2)
+pp.primary.results.2
 ```
 
 # Secondary Outcome: SANE Kit Done/ offered if eligible
@@ -238,25 +238,25 @@ pp.cohort.3$sane_kit_offered <- as_factor(pp.cohort.3$sane_kit_offered)
 pp.cohort.3$sane_kit_offered <- relevel(pp.cohort.3$sane_kit_offered, ref = "No")
 pp.cohort.3$relationship_4_with_pt <- as_factor(pp.cohort.3$relationship_4_with_pt)
 pp.cohort.3$relationship_4_with_pt <- relevel(pp.cohort.3$relationship_4_with_pt, ref = "Stranger/Unknown")
-model.secondary.1 <-  glm(sane_kit_offered ~ exposure.num + age + race_bwo + insurance_3,  family = "binomial", data = pp.cohort.3)
-secondary.results.1 <- tbl_regression(model.secondary.1, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of Offering SANE Kit if Eligible") 
-summary(model.secondary.1)
-secondary.results.1
+pp.model.secondary.1 <-  glm(sane_kit_offered ~ exposure.num + age + race_bwo + insurance_3,  family = "binomial", data = pp.cohort.3)
+pp.secondary.results.1 <- tbl_regression(pp.model.secondary.1, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of Offering SANE Kit if Eligible") 
+summary(pp.model.secondary.1)
+pp.secondary.results.1
 ```
 
 Pregnancy related outcomes
 *note- used 120 hour as threshold for eligibility for EC since ulipristol can be used up to 120 hours*
 ```{r}
-tertiary.cohort <- pp.cohort.2 %>%  filter(female_u55 == 1)
-quatrinary.cohort <- tertiary.cohort %>% filter(under120h = TRUE)
-model.tertiary <-  glm(pregnancy_test_ordered_num ~ pathway + age + race_bwo + english + ambulance, family = "binomial", data = tertiary.cohort)
+pp.tertiary.cohort <- pp.cohort.2 %>%  filter(female_u55 == 1)
+pp.quatrinary.cohort <- pp.tertiary.cohort %>% filter(under120h = TRUE)
+model.tertiary <-  glm(pregnancy_test_ordered_num ~ pathway + age + race_bwo + english + ambulance, family = "binomial", data = pp.tertiary.cohort)
 summary(model.tertiary)
-tertiary.results <- tbl_regression(model.tertiary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Secondary Outcome (did women under 55 get preg test?)")
-tertiary.results
-model.quatro <-  glm(prevent.preg ~ exposure.num + age + race_bwo +  english + ambulance, family = "binomial", data = quatrinary.cohort)
-summary(model.quatro)
-quatro.results <- tbl_regression(model.quatro, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Secondary Outcome (did women under 55 have pregnancy prevention ordered?)")
-quatro.results
+pp.tertiary.results <- tbl_regression(model.tertiary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Secondary Outcome (did women under 55 get preg test?)")
+pp.tertiary.results
+pp.model.quatro <-  glm(prevent.preg ~ exposure.num + age + race_bwo +  english + ambulance, family = "binomial", data = pp.quatrinary.cohort)
+summary(pp.model.quatro)
+pp.quatro.results <- tbl_regression(pp.model.quatro, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Secondary Outcome (did women under 55 have pregnancy prevention ordered?)")
+pp.quatro.results
 ```
 
 # Secondary Outcome: Correct STI tx if given *any* antibiotics
@@ -264,21 +264,21 @@ Meaning: Women got Metronidizole + CTX + Azithromycin or Doxy
         only one male patient received incorrect abx for STI treatment causing 0 cell problem so had to restrict to female patients
 ```{r}
 #need to first restrict to patients who got any antibiotics
-abx.cohort <- pp.cohort.2 %>% filter(abx_given == 1) # 184 pts
-model.sti.tx <- glm(tbl_sti_tx ~ exposure.num + age + race_bwo + english + relationship_4_with_pt, family = "binomial", data = abx.cohort)
-summary(model.sti.tx)
-sti.model.results <- tbl_regression(model.sti.tx, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds that Correct STI Tx was given if pt received ABX")
-sti.model.results
+pp.abx.cohort <- pp.cohort.2 %>% filter(abx_given == 1) # 184 pts
+pp.model.sti.tx <- glm(tbl_sti_tx ~ exposure.num + age + race_bwo + english + relationship_4_with_pt, family = "binomial", data = pp.abx.cohort)
+summary(pp.model.sti.tx)
+pp.sti.model.results <- tbl_regression(pp.model.sti.tx, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds that Correct STI Tx was given if pt received ABX")
+pp.sti.model.results
 ```
 
 # Secondary Outcome: Correct labs ordered if patient given PEP
 restricted to those presenting within 72 hours
 ```{r}
-cohort.u72 <- pp.cohort.2 %>% filter(time_since_sexual_assault_if_number_k_is_y == 0) #restricting to those <72 hours. 206 patients. 
-cohort.u72.pep <- cohort.u72 %>% filter(hiv_pep_kit_ordered_num ==1) #72 patients only
-model.hiv.labs <-  glm(hiv_labs ~ exposure.num + age + female + race_bwo, family = "binomial", data = cohort.u72.pep)
-summary(model.hiv.labs)
-hiv.labs.results <- tbl_regression(model.hiv.labs, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Secondary Outcome (did patients who got HIV PEP have LFTs ordered?)")
-hiv.labs.results
+pp.cohort.u72 <- pp.cohort.2 %>% filter(time_since_sexual_assault_if_number_k_is_y == 0) #restricting to those <72 hours. 206 patients. 
+pp.cohort.u72.pep <- pp.cohort.u72 %>% filter(hiv_pep_kit_ordered_num ==1) #72 patients only
+pp.model.hiv.labs <-  glm(hiv_labs ~ exposure.num + age + female + race_bwo, family = "binomial", data = pp.cohort.u72.pep)
+summary(pp.model.hiv.labs)
+pp.hiv.labs.results <- tbl_regression(pp.model.hiv.labs, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Secondary Outcome (did patients who got HIV PEP have LFTs ordered?)")
+pp.hiv.labs.results
 
 ```
