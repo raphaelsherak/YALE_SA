@@ -18,7 +18,7 @@ library(parameters)
 library(survival)
 library(ggsurvfit)
 library(table1)
-all_pts <- read_csv("SA_pts_reformatted.csv")
+all_pts <- read_csv("~/Documents/Current_Projects/Sexual_Assault/new_SA_YNHH/Updated YNHH SA code/SA_pts_reformatted.csv")
 # set TZ to east coast standard
 time_zone <- "America/New_York"
 #pathway went live on 7/13/21
@@ -156,7 +156,7 @@ all_pts$insurance_3 <- relevel(all_pts$insurance_3, ref = "Public")
 _-patients before story board start date 2021-09-08_  
 _-minors_   
 _-excluded patients_
-```{r}
+```{r echo=FALSE}
 cohort.1 <- all_pts %>% filter(ed_arrival_date > sb_start) %>% filter(age > 17)
 excluded_patients <- cohort.1  %>% filter(!is.na(exclude))
 cohort.2 <- cohort.1  %>% filter(is.na(exclude))
