@@ -1,6 +1,8 @@
 ---
-title: "YNHH Cohort ACEP presentaiton Analysis"
-output: github_document
+title: "SA Project Current Results Page"
+author: "Raffi Sherak"
+date: "`r Sys.Date()`"
+output: html_document
 ---
 
 ```{r include=FALSE}
