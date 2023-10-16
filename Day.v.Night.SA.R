@@ -190,3 +190,6 @@ d.n.cohort2 <- d.n.cohort2 %>%
     patient_advocate_present = 0 ~ FALSE,
     .default = NA
   ))
+
+
+all_pts %>% select(SA_insurance, ct_400_forensic_toxiclogy) %>% mutate(SA_insurance = factor(SA_insurance, levels = c(0,1), labels = c("SA Insurance", "Other Insurance"))) %>%  tbl_summary(by = SA_insurance, percent = "row")

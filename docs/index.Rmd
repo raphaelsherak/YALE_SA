@@ -141,6 +141,9 @@ all_pts <- all_pts %>% mutate(
     insurance == "Private Insurance" ~ "Private",
     insurance %in% c("Medicaid", "Medicare", "Sexual Assault") ~ "Public",
     insurance == "Uninsured/Self-Pay" ~ "Uninsured"
+  ),
+  SA_insurance = if_else(
+    insurance == "Sexual Assault", 1, 0
   )
   ) %>% 
     mutate(relationship_4_with_pt = case_when(
@@ -209,7 +212,7 @@ cohort.2$race_bwo <- as_factor(cohort.2$race_bwo)
 cohort.2$race_bwo <- relevel(cohort.2$race_bwo, ref= "White")
 cohort.2$advocate_offered <- (as_factor(cohort.2$advocate_offered))
 cohort.2$advocate_offered <- relevel(cohort.2$advocate_offered, ref= "No Documentation of Pt Advocate")
-model.primary <-  glm(advocate_offered ~ pathway + age + female + race_bwo + insurance_3 + english,  family = "binomial", data = cohort.2)
+model.primary <-  glm(advocate_offered ~ pathway + age + female + white + SA_insurance + english,  family = "binomial", data = cohort.2)
 primary.results <- tbl_regression(model.primary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
 summary(model.primary)
 primary.results
@@ -223,8 +226,8 @@ cohort.2$race_bwo <- relevel(cohort.2$race_bwo, ref= "White")
 cohort.2$advocate_offered <- (as_factor(cohort.2$advocate_offered))
 cohort.2$advocate_offered <- relevel(cohort.2$advocate_offered, ref= "No Documentation of Pt Advocate")
 cohort.2.2 <- cohort.2 %>% filter(sane_kit_done == 1) #156 patients
-model.primary.2 <-  glm(advocate_offered ~ pathway + age + female + race_bwo + insurance_3 + english,  family = "binomial", data = cohort.2.2)
-primary.results.2 <- tbl_regression(model.primary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
+model.primary.2 <-  glm(advocate_offered ~ pathway + age + female + white,  family = "binomial", data = cohort.2.2)
+primary.results.2 <- tbl_regression(model.primary.2, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate IF SANE Kit Done") 
 summary(model.primary.2)
 primary.results.2
 ```
@@ -242,7 +245,7 @@ cohort.3$sane_kit_offered <- as_factor(cohort.3$sane_kit_offered)
 cohort.3$sane_kit_offered <- relevel(cohort.3$sane_kit_offered, ref = "No")
 cohort.3$relationship_4_with_pt <- as_factor(cohort.3$relationship_4_with_pt)
 cohort.3$relationship_4_with_pt <- relevel(cohort.3$relationship_4_with_pt, ref = "Stranger/Unknown")
-model.secondary.1 <-  glm(sane_kit_offered ~ pathway + age + race_bwo + insurance_3,  family = "binomial", data = cohort.3)
+model.secondary.1 <-  glm(sane_kit_offered ~ pathway + age + white + insurance_3,  family = "binomial", data = cohort.3)
 secondary.results.1 <- tbl_regression(model.secondary.1, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of Offering SANE Kit if Eligible") 
 summary(model.secondary.1)
 secondary.results.1
@@ -257,7 +260,7 @@ model.tertiary <-  glm(pregnancy_test_ordered_num ~ pathway + age + race_bwo + e
 summary(model.tertiary)
 tertiary.results <- tbl_regression(model.tertiary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Secondary Outcome (did women under 55 get preg test?)")
 tertiary.results
-model.quatro <-  glm(prevent.preg ~ pathway + age + race_bwo +  english + ambulance, family = "binomial", data = quatrinary.cohort)
+model.quatro <-  glm(prevent.preg ~ pathway + age + white +  english + ambulance, family = "binomial", data = quatrinary.cohort)
 summary(model.quatro)
 quatro.results <- tbl_regression(model.quatro, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Secondary Outcome (did women under 55 have pregnancy prevention ordered?)")
 quatro.results
@@ -269,7 +272,7 @@ Meaning: Women got Metronidizole + CTX + Azithromycin or Doxy
 ```{r}
 #need to first restrict to patients who got any antibiotics
 abx.cohort <- cohort.2 %>% filter(abx_given == 1) # 184 pts
-model.sti.tx <- glm(tbl_sti_tx ~ pathway + age + race_bwo + english + relationship_4_with_pt, family = "binomial", data = abx.cohort)
+model.sti.tx <- glm(tbl_sti_tx ~ pathway + age + white + english + relationship_4_with_pt, family = "binomial", data = abx.cohort)
 summary(model.sti.tx)
 sti.model.results <- tbl_regression(model.sti.tx, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds that Correct STI Tx was given if pt received ABX")
 sti.model.results
@@ -341,7 +344,7 @@ pp.cohort.2$race_bwo <- as_factor(pp.cohort.2$race_bwo)
 pp.cohort.2$race_bwo <- relevel(pp.cohort.2$race_bwo, ref= "White")
 pp.cohort.2$advocate_offered <- (as_factor(pp.cohort.2$advocate_offered))
 pp.cohort.2$advocate_offered <- relevel(pp.cohort.2$advocate_offered, ref= "No Documentation of Pt Advocate")
-pp.model.primary <-  glm(advocate_offered ~ exposure.num + age + female + race_bwo + insurance_3 + english + relationship_4_with_pt,  family = "binomial", data = pp.cohort.2)
+pp.model.primary <-  glm(advocate_offered ~ exposure.num + age + female + white + insurance_3 + english + relationship_4_with_pt,  family = "binomial", data = pp.cohort.2)
 pp.primary.results <- tbl_regression(pp.model.primary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
 summary(pp.model.primary)
 pp.primary.results
@@ -355,7 +358,7 @@ pp.cohort.2$race_bwo <- relevel(pp.cohort.2$race_bwo, ref= "White")
 pp.cohort.2$advocate_offered <- (as_factor(pp.cohort.2$advocate_offered))
 pp.cohort.2$advocate_offered <- relevel(pp.cohort.2$advocate_offered, ref= "No Documentation of Pt Advocate")
 pp.cohort.2.2 <- pp.cohort.2 %>% filter(sane_kit_done == 1) #156 patients
-pp.model.primary.2 <-  glm(advocate_offered ~ exposure.num + age + female + race_bwo + insurance_3 + english,  family = "binomial", data = pp.cohort.2.2)
+pp.model.primary.2 <-  glm(advocate_offered ~ exposure.num + age + female + white + insurance_3 + english,  family = "binomial", data = pp.cohort.2.2)
 pp.primary.results.2 <- tbl_regression(pp.model.primary.2, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
 summary(pp.model.primary.2)
 pp.primary.results.2
@@ -385,11 +388,11 @@ pp.secondary.results.1
 ```{r}
 pp.tertiary.cohort <- pp.cohort.2 %>%  filter(female_u55 == 1)
 pp.quatrinary.cohort <- pp.tertiary.cohort %>% filter(under120h = TRUE)
-model.tertiary <-  glm(pregnancy_test_ordered_num ~ pathway + age + race_bwo + english + ambulance, family = "binomial", data = pp.tertiary.cohort)
+model.tertiary <-  glm(pregnancy_test_ordered_num ~ pathway + age + white + english + ambulance, family = "binomial", data = pp.tertiary.cohort)
 summary(model.tertiary)
 pp.tertiary.results <- tbl_regression(model.tertiary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Secondary Outcome (did women under 55 get preg test?)")
 pp.tertiary.results
-pp.model.quatro <-  glm(prevent.preg ~ exposure.num + age + race_bwo +  english + ambulance, family = "binomial", data = pp.quatrinary.cohort)
+pp.model.quatro <-  glm(prevent.preg ~ exposure.num + age + white +  english + ambulance, family = "binomial", data = pp.quatrinary.cohort)
 summary(pp.model.quatro)
 pp.quatro.results <- tbl_regression(pp.model.quatro, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Secondary Outcome (did women under 55 have pregnancy prevention ordered?)")
 pp.quatro.results
@@ -401,7 +404,7 @@ Meaning: Women got Metronidizole + CTX + Azithromycin or Doxy
 ```{r}
 #need to first restrict to patients who got any antibiotics
 pp.abx.cohort <- pp.cohort.2 %>% filter(abx_given == 1) # 184 pts
-pp.model.sti.tx <- glm(tbl_sti_tx ~ exposure.num + age + race_bwo + english + relationship_4_with_pt, family = "binomial", data = pp.abx.cohort)
+pp.model.sti.tx <- glm(tbl_sti_tx ~ exposure.num + age + white + english + relationship_4_with_pt, family = "binomial", data = pp.abx.cohort)
 summary(pp.model.sti.tx)
 pp.sti.model.results <- tbl_regression(pp.model.sti.tx, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds that Correct STI Tx was given if pt received ABX")
 pp.sti.model.results
@@ -422,9 +425,12 @@ pp.hiv.labs.results
 # Supplemental Analysis: Day (6a to 6p arrivals) VS Night (6p to 6a arrivals)
 
 ```{r}
-d.n.cohort <- all_pts %>% filter(age > 17) %>% filter(is.na(exclude))
+d.n.cohort <- all_pts %>% filter(age > 17) %>% filter(is.na(exclude)) %>% mutate(advocate_present = case_when(
+    patient_advocate_present == 1 ~ TRUE,
+    patient_advocate_present == 0 ~ FALSE,
+    .default = NA))
 supp.table.1 <- d.n.cohort %>% 
-  select(day_night, age, female, race_bwo, under120h, english, ambulance, insurance, relationship_with_patient, advocate_offered, sane_kit_YN) %>% 
+  select(day_night, age, female, race_bwo, under120h, english, ambulance, insurance, relationship_with_patient, advocate_present,advocate_offered, sane_kit_YN) %>% 
   set_variable_labels( day_night = "Time of arrival", age = "Age",  female = "Female", race_bwo = "Race", under120h = "Presented within 120 of assault", ambulance = "Arrived by EMS", english = "English speaking", insurance = "Insurance", relationship_with_patient = "Relation of assailant to patient", sane_kit_YN = "SANE kit done?") %>% 
   tbl_summary(
     by = day_night,
@@ -438,6 +444,16 @@ supp.table.1
 ```
 
 ```{r}
-
+d.n.cohort$advocate_offered <- (as_factor(d.n.cohort$advocate_offered))
+d.n.cohort$advocate_offered <- relevel(d.n.cohort$advocate_offered, ref= "No Documentation of Pt Advocate")
+sup.mod.1 <-  glm(advocate_offered ~ day_night + age + female + white + SA_insurance + english,  family = "binomial", data = d.n.cohort)
+sup.primary.results <- tbl_regression(sup.mod.1, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
+sup.primary.results
+```
+```{r}
+advocate_showed_cohort <- d.n.cohort %>% filter(advocate_offered == "Advocate Offered")
+sup.mod.2 <-  glm(advocate_present ~ day_night + age + female + white,  family = "binomial", data = d.n.cohort)
+sup.primary.results.2 <- tbl_regression(sup.mod.2, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of advocate being present") 
+sup.primary.results.2
 ```
 
