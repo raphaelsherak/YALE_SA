@@ -143,7 +143,13 @@ all_pts <- all_pts %>% mutate(
     arrive_time >= day.arrival.start & arrive_time <= night.arrival.start ~ "Day",
     arrive_time < day.arrival.start | arrive_time > night.arrival.start ~ "Night",
     .default = "ERROR"
+  )) %>% 
+  mutate(advocate_present = case_when(
+    patient_advocate_present = 1 ~ TRUE,
+    patient_advocate_present = 0 ~ FALSE,
+    .default = NA
   ))
+
 all_pts$insurance_3 <- as_factor(all_pts$insurance_3)
 all_pts$insurance_3 <- relevel(all_pts$insurance_3, ref = "Public")
 

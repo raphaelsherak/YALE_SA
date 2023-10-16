@@ -355,7 +355,7 @@ pp.cohort.2$race_bwo <- relevel(pp.cohort.2$race_bwo, ref= "White")
 pp.cohort.2$advocate_offered <- (as_factor(pp.cohort.2$advocate_offered))
 pp.cohort.2$advocate_offered <- relevel(pp.cohort.2$advocate_offered, ref= "No Documentation of Pt Advocate")
 pp.cohort.2.2 <- pp.cohort.2 %>% filter(sane_kit_done == 1) #156 patients
-pp.model.primary.2 <-  glm(exposure.num ~ pathway + age + female + race_bwo + insurance_3 + english,  family = "binomial", data = pp.cohort.2.2)
+pp.model.primary.2 <-  glm(advocate_offered ~ exposure.num + age + female + race_bwo + insurance_3 + english,  family = "binomial", data = pp.cohort.2.2)
 pp.primary.results.2 <- tbl_regression(pp.model.primary.2, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
 summary(pp.model.primary.2)
 pp.primary.results.2
@@ -434,6 +434,10 @@ supp.table.1 <- d.n.cohort %>%
   ) %>% 
   add_p() %>% separate_p_footnotes() %>%  as_gt() 
 supp.table.1
+
+```
+
+```{r}
 
 ```
 
