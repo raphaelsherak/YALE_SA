@@ -86,7 +86,7 @@ all_pts <- all_pts %>% mutate(
     plan_b_or_levonorgestrel_ordered_num == 0 & ulipristal_ordered_num == 0 ~ 0,
     .default = NA
   ),
-  contacted_advocate = case_when(
+  advocate_offered = case_when(
     patient_advocate_called == 1 | patient_advocate_called == 3 ~ "Advocate Contacted",
     patient_advocate_called == 0 | patient_advocate_called == 2 ~ "No Documentation of Pt Advocate",
     .default = NA
@@ -195,8 +195,8 @@ table.1
 
 ```
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-table.2 <- cohort.2 %>% select(pathway, contacted_advocate, abx_given, sti_tx, hiv_pep_kit_ordered_num, hiv_labs, female_u55, pregnancy_test_ordered_num, prevent.preg, sane_kit_YN, sane_kit_missed, follow_up_at_discharge) %>% 
- set_variable_labels(contacted_advocate = "Documentation of advocate contacted", sti_tx ="Recieved CDC reccomended STI prophalaxis" , abx_given = "Received any antibiotics", hiv_pep_kit_ordered_num = "HIV PEP ordered", hiv_labs = "Had indicated labs drawn if given HIV PEP", female_u55 = "Female under 55", pregnancy_test_ordered_num = "Pregnancy test ordered", prevent.preg = "Pregnancy prophalaxis ordered", sane_kit_YN = "SANE kit done", sane_kit_missed = "Under 120 hours and SANE kit not done", follow_up_at_discharge = "Has after discharge follow up") %>% tbl_summary(
+table.2 <- cohort.2 %>% select(pathway, advocate_offered, abx_given, sti_tx, hiv_pep_kit_ordered_num, hiv_labs, female_u55, pregnancy_test_ordered_num, prevent.preg, sane_kit_YN, sane_kit_missed, follow_up_at_discharge) %>% 
+ set_variable_labels(advocate_offered = "Documentation of advocate contacted", sti_tx ="Recieved CDC reccomended STI prophalaxis" , abx_given = "Received any antibiotics", hiv_pep_kit_ordered_num = "HIV PEP ordered", hiv_labs = "Had indicated labs drawn if given HIV PEP", female_u55 = "Female under 55", pregnancy_test_ordered_num = "Pregnancy test ordered", prevent.preg = "Pregnancy prophalaxis ordered", sane_kit_YN = "SANE kit done", sane_kit_missed = "Under 120 hours and SANE kit not done", follow_up_at_discharge = "Has after discharge follow up") %>% tbl_summary(
     by = pathway,
     percent = "column",
     statistic =list(c(hiv_labs, prevent.preg, sti_tx, pregnancy_test_ordered_num) ~ "{n}" ) ) %>% as_gt()
@@ -207,9 +207,9 @@ table.2
 ```{r}
 cohort.2$race_bwo <- as_factor(cohort.2$race_bwo)
 cohort.2$race_bwo <- relevel(cohort.2$race_bwo, ref= "White")
-cohort.2$contacted_advocate <- (as_factor(cohort.2$contacted_advocate))
-cohort.2$contacted_advocate <- relevel(cohort.2$contacted_advocate, ref= "No Documentation of Pt Advocate")
-model.primary <-  glm(contacted_advocate ~ pathway + age + female + race_bwo + insurance_3 + english,  family = "binomial", data = cohort.2)
+cohort.2$advocate_offered <- (as_factor(cohort.2$advocate_offered))
+cohort.2$advocate_offered <- relevel(cohort.2$advocate_offered, ref= "No Documentation of Pt Advocate")
+model.primary <-  glm(advocate_offered ~ pathway + age + female + race_bwo + insurance_3 + english,  family = "binomial", data = cohort.2)
 primary.results <- tbl_regression(model.primary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
 summary(model.primary)
 primary.results
@@ -220,10 +220,10 @@ primary.results
 ```{r}
 cohort.2$race_bwo <- as_factor(cohort.2$race_bwo)
 cohort.2$race_bwo <- relevel(cohort.2$race_bwo, ref= "White")
-cohort.2$contacted_advocate <- (as_factor(cohort.2$contacted_advocate))
-cohort.2$contacted_advocate <- relevel(cohort.2$contacted_advocate, ref= "No Documentation of Pt Advocate")
+cohort.2$advocate_offered <- (as_factor(cohort.2$advocate_offered))
+cohort.2$advocate_offered <- relevel(cohort.2$advocate_offered, ref= "No Documentation of Pt Advocate")
 cohort.2.2 <- cohort.2 %>% filter(sane_kit_done == 1) #156 patients
-model.primary.2 <-  glm(contacted_advocate ~ pathway + age + female + race_bwo + insurance_3 + english,  family = "binomial", data = cohort.2.2)
+model.primary.2 <-  glm(advocate_offered ~ pathway + age + female + race_bwo + insurance_3 + english,  family = "binomial", data = cohort.2.2)
 primary.results.2 <- tbl_regression(model.primary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
 summary(model.primary.2)
 primary.results.2
@@ -327,8 +327,8 @@ pp.table.1
 
 ```
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-pp.table.2 <- pp.cohort.2 %>% select(exposure.char, contacted_advocate, abx_given, sti_tx, hiv_pep_kit_ordered_num, hiv_labs, female_u55, pregnancy_test_ordered_num, prevent.preg, sane_kit_YN, sane_kit_missed, follow_up_at_discharge) %>% 
- set_variable_labels(contacted_advocate = "Documentation of advocate contacted", sti_tx ="Recieved CDC reccomended STI prophalaxis" , abx_given = "Received any antibiotics", hiv_pep_kit_ordered_num = "HIV PEP ordered", hiv_labs = "Had indicated labs drawn if given HIV PEP", female_u55 = "Female under 55", pregnancy_test_ordered_num = "Pregnancy test ordered", prevent.preg = "Pregnancy prophalaxis ordered", sane_kit_YN = "SANE kit done", sane_kit_missed = "Under 120 hours and SANE kit not done", follow_up_at_discharge = "Has after discharge follow up") %>% tbl_summary(
+pp.table.2 <- pp.cohort.2 %>% select(exposure.char, advocate_offered, abx_given, sti_tx, hiv_pep_kit_ordered_num, hiv_labs, female_u55, pregnancy_test_ordered_num, prevent.preg, sane_kit_YN, sane_kit_missed, follow_up_at_discharge) %>% 
+ set_variable_labels(advocate_offered = "Documentation of advocate contacted", sti_tx ="Recieved CDC reccomended STI prophalaxis" , abx_given = "Received any antibiotics", hiv_pep_kit_ordered_num = "HIV PEP ordered", hiv_labs = "Had indicated labs drawn if given HIV PEP", female_u55 = "Female under 55", pregnancy_test_ordered_num = "Pregnancy test ordered", prevent.preg = "Pregnancy prophalaxis ordered", sane_kit_YN = "SANE kit done", sane_kit_missed = "Under 120 hours and SANE kit not done", follow_up_at_discharge = "Has after discharge follow up") %>% tbl_summary(
     by = exposure.char,
     percent = "column",
     statistic =list(c(hiv_labs, prevent.preg, sti_tx, pregnancy_test_ordered_num) ~ "{n}" ) ) %>% as_gt()
@@ -339,9 +339,9 @@ pp.table.2
 ```{r}
 pp.cohort.2$race_bwo <- as_factor(pp.cohort.2$race_bwo)
 pp.cohort.2$race_bwo <- relevel(pp.cohort.2$race_bwo, ref= "White")
-pp.cohort.2$contacted_advocate <- (as_factor(pp.cohort.2$contacted_advocate))
-pp.cohort.2$contacted_advocate <- relevel(pp.cohort.2$contacted_advocate, ref= "No Documentation of Pt Advocate")
-pp.model.primary <-  glm(contacted_advocate ~ exposure.num + age + female + race_bwo + insurance_3 + english + relationship_4_with_pt,  family = "binomial", data = pp.cohort.2)
+pp.cohort.2$advocate_offered <- (as_factor(pp.cohort.2$advocate_offered))
+pp.cohort.2$advocate_offered <- relevel(pp.cohort.2$advocate_offered, ref= "No Documentation of Pt Advocate")
+pp.model.primary <-  glm(advocate_offered ~ exposure.num + age + female + race_bwo + insurance_3 + english + relationship_4_with_pt,  family = "binomial", data = pp.cohort.2)
 pp.primary.results <- tbl_regression(pp.model.primary, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
 summary(pp.model.primary)
 pp.primary.results
@@ -352,8 +352,8 @@ pp.primary.results
 ```{r}
 pp.cohort.2$race_bwo <- as_factor(pp.cohort.2$race_bwo)
 pp.cohort.2$race_bwo <- relevel(pp.cohort.2$race_bwo, ref= "White")
-pp.cohort.2$contacted_advocate <- (as_factor(pp.cohort.2$contacted_advocate))
-pp.cohort.2$contacted_advocate <- relevel(pp.cohort.2$contacted_advocate, ref= "No Documentation of Pt Advocate")
+pp.cohort.2$advocate_offered <- (as_factor(pp.cohort.2$advocate_offered))
+pp.cohort.2$advocate_offered <- relevel(pp.cohort.2$advocate_offered, ref= "No Documentation of Pt Advocate")
 pp.cohort.2.2 <- pp.cohort.2 %>% filter(sane_kit_done == 1) #156 patients
 pp.model.primary.2 <-  glm(exposure.num ~ pathway + age + female + race_bwo + insurance_3 + english,  family = "binomial", data = pp.cohort.2.2)
 pp.primary.results.2 <- tbl_regression(pp.model.primary.2, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of documentation of offering call to PT advocate") 
@@ -424,7 +424,7 @@ pp.hiv.labs.results
 ```{r}
 d.n.cohort <- all_pts %>% filter(age > 17) %>% filter(is.na(exclude))
 supp.table.1 <- d.n.cohort %>% 
-  select(day_night, age, female, race_bwo, under120h, english, ambulance, insurance, relationship_with_patient, contacted_advocate, sane_kit_YN) %>% 
+  select(day_night, age, female, race_bwo, under120h, english, ambulance, insurance, relationship_with_patient, advocate_offered, sane_kit_YN) %>% 
   set_variable_labels( day_night = "Time of arrival", age = "Age",  female = "Female", race_bwo = "Race", under120h = "Presented within 120 of assault", ambulance = "Arrived by EMS", english = "English speaking", insurance = "Insurance", relationship_with_patient = "Relation of assailant to patient", sane_kit_YN = "SANE kit done?") %>% 
   tbl_summary(
     by = day_night,

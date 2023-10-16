@@ -75,7 +75,7 @@ all_pts <- all_pts %>% mutate(
     plan_b_or_levonorgestrel_ordered_num == 0 & ulipristal_ordered_num == 0 ~ 0,
     .default = NA
   ),
-  contacted_advocate = case_when(
+  advocate_offerred = case_when(
     patient_advocate_called == 1 | patient_advocate_called == 3 ~ "Advocate Contacted",
     patient_advocate_called == 0 | patient_advocate_called == 2 ~ "No Documentation of Pt Advocate",
     .default = NA
@@ -163,7 +163,7 @@ number_of_minors <- n_distinct(number_of_minors$pat_enc_csn_id, na.rm = TRUE) %>
 cat("  ", number_of_minors, "patients under 18 YO excluded")
 rm(n_excluded, number_of_minors, n_between)
 table.1 <- d.n.cohort2 %>% 
-  select(day_night, age, female, race_bwo, under120h, english, ambulance, insurance, relationship_with_patient, contacted_advocate, sane_kit_YN) %>% 
+  select(day_night, age, female, race_bwo, under120h, english, ambulance, insurance, relationship_with_patient, advocate_offerred, sane_kit_YN) %>% 
   set_variable_labels( day_night = "Time of arrival", age = "Age",  female = "Female", race_bwo = "Race", under120h = "Presented within 120 of assault", ambulance = "Arrived by EMS", english = "English speaking", insurance = "Insurance", relationship_with_patient = "Relation of assailant to patient", sane_kit_YN = "SANE kit done?") %>% 
   tbl_summary(
     by = day_night,
@@ -174,4 +174,13 @@ table.1 <- d.n.cohort2 %>%
   add_p() %>% separate_p_footnotes() %>%  as_gt() 
 table.1
 
+### Regression TIME
 
+## Outcome: advocate PRESENT
+
+d.n.cohort2 <- d.n.cohort2 %>% 
+  mutate(advocate_present = case_when(
+    patient_advocate_present = 1 ~ TRUE,
+    patient_advocate_present = 0 ~ FALSE,
+    .default = NA
+  ))
