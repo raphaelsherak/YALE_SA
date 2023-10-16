@@ -76,7 +76,7 @@ all_pts <- all_pts %>% mutate(
     .default = NA
   ),
   advocate_offerred = case_when(
-    patient_advocate_called == 1 | patient_advocate_called == 3 ~ "Advocate Contacted",
+    patient_advocate_called == 1 | patient_advocate_called == 3 ~ "Advocate Offerred",
     patient_advocate_called == 0 | patient_advocate_called == 2 ~ "No Documentation of Pt Advocate",
     .default = NA
   ),
