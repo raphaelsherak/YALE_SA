@@ -162,4 +162,16 @@ number_of_minors <-all_pts %>% filter(between == 0) %>% filter(age < 18)
 number_of_minors <- n_distinct(number_of_minors$pat_enc_csn_id, na.rm = TRUE) %>% as.character()
 cat("  ", number_of_minors, "patients under 18 YO excluded")
 rm(n_excluded, number_of_minors, n_between)
+table.1 <- d.n.cohort2 %>% 
+  select(day_night, age, female, race_bwo, under120h, english, ambulance, insurance, relationship_with_patient, contacted_advocate, sane_kit_YN) %>% 
+  set_variable_labels( day_night = "Time of arrival", age = "Age",  female = "Female", race_bwo = "Race", under120h = "Presented within 120 of assault", ambulance = "Arrived by EMS", english = "English speaking", insurance = "Insurance", relationship_with_patient = "Relation of assailant to patient", sane_kit_YN = "SANE kit done?") %>% 
+  tbl_summary(
+    by = day_night,
+    missing = "ifany", 
+    percent = "column",
+    statistic = (age ~ "{median} ({p25}, {p75})")
+  ) %>% 
+  add_p() %>% separate_p_footnotes() %>%  as_gt() 
+table.1
+
 

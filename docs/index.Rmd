@@ -181,8 +181,8 @@ rm(n_excluded, number_of_minors)
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 table.1 <- cohort.2 %>% 
-  select(pathway, age, female, race_bwo, under120h, english, ambulance, insurance, relationship_with_patient) %>% 
-  set_variable_labels(age = "Age",  female = "Female", race_bwo = "Race", under120h = "Presented within 120 of assault", ambulance = "Arrived by EMS", english = "English speaking", insurance = "Insurance", relationship_with_patient = "Relation of assailant to patient") %>% 
+  select(pathway, age, female, race_bwo, under120h, day_night, english, ambulance, insurance, relationship_with_patient) %>% 
+  set_variable_labels(age = "Age",  female = "Female", race_bwo = "Race", under120h = "Presented within 120 of assault", ambulance = "Arrived by EMS", english = "English speaking", insurance = "Insurance", relationship_with_patient = "Relation of assailant to patient", day_night = "Time of arrival") %>% 
   tbl_summary(
     by = pathway,
     missing = "ifany", 
@@ -415,6 +415,24 @@ pp.model.hiv.labs <-  glm(hiv_labs ~ exposure.num + age + female + race_bwo, fam
 summary(pp.model.hiv.labs)
 pp.hiv.labs.results <- tbl_regression(pp.model.hiv.labs, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Secondary Outcome (did patients who got HIV PEP have LFTs ordered?)")
 pp.hiv.labs.results
+
+```
+
+# Supplemental Analysis: Day (6a to 6p arrivals) VS Night (6p to 6a arrivals)
+
+```{r}
+d.n.cohort <- all_pts %>% filter(age > 17) %>% filter(is.na(exclude))
+supp.table.1 <- d.n.cohort %>% 
+  select(day_night, age, female, race_bwo, under120h, english, ambulance, insurance, relationship_with_patient, contacted_advocate, sane_kit_YN) %>% 
+  set_variable_labels( day_night = "Time of arrival", age = "Age",  female = "Female", race_bwo = "Race", under120h = "Presented within 120 of assault", ambulance = "Arrived by EMS", english = "English speaking", insurance = "Insurance", relationship_with_patient = "Relation of assailant to patient", sane_kit_YN = "SANE kit done?") %>% 
+  tbl_summary(
+    by = day_night,
+    missing = "ifany", 
+    percent = "column",
+    statistic = (age ~ "{median} ({p25}, {p75})")
+  ) %>% 
+  add_p() %>% separate_p_footnotes() %>%  as_gt() 
+supp.table.1
 
 ```
 
