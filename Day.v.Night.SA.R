@@ -18,7 +18,9 @@ time_zone <- "America/New_York"
 pathway_start <- mdy("7/13/21", tz = time_zone)
 #Story board notification went live on 9/8/21
 sb_start <- mdy("9/8/21", tz = time_zone)
-# making outcome variable for if correct STI tx: CTX, azithromycin or doxy (and flagyl if female) are ordered 
+day.arrival.start <- hms::as_hms("06:00:00")
+night.arrival.start <- hms::as_hms("18:00:00")
+# making outcome variables
 all_pts <- all_pts %>% mutate(
   azithro_or_doxy = case_when(
     azithromycin_ordered_num | doxycycline_ordered_num == 1 ~ 1,
@@ -135,6 +137,12 @@ all_pts <- all_pts %>% mutate(
     relationship_with_patient == "Aqauintance" ~ "Aquaintaince",
     relationship_with_patient == "Intimate Partner" ~ "Intimate Partner",
     relationship_with_patient == "Unknown" |relationship_with_patient == "Stranger" ~ "Stranger/Unknown"
+  )) %>% 
+  mutate(arrive_time = as_hms(arrive_dt)) %>% 
+  mutate(day_night = case_when(
+    arrive_time >= day.arrival.start & arrive_time <= night.arrival.start ~ "Day",
+    arrive_time < day.arrival.start | arrive_time > night.arrival.start ~ "Night",
+    .default = "ERROR"
   ))
 all_pts$insurance_3 <- as_factor(all_pts$insurance_3)
 all_pts$insurance_3 <- relevel(all_pts$insurance_3, ref = "Public")
@@ -154,12 +162,4 @@ number_of_minors <-all_pts %>% filter(between == 0) %>% filter(age < 18)
 number_of_minors <- n_distinct(number_of_minors$pat_enc_csn_id, na.rm = TRUE) %>% as.character()
 cat("  ", number_of_minors, "patients under 18 YO excluded")
 rm(n_excluded, number_of_minors, n_between)
-day.arrival.start <- hms::as_hms("06:00:00")
-night.arrival.start <- hms::as_hms("18:00:00")
-d.n.cohort2 <- d.n.cohort2 %>%
-  mutate(arrive_time = as_hms(arrive_dt)) %>% 
-  mutate(day_night = case_when(
-    arrive_time >= day.arrival.start & arrive_time <= night.arrival.start ~ "Day",
-    arrive_time < day.arrival.start | arrive_time > night.arrival.start ~ "Night",
-    .default = "ERROR"
-  ))
+

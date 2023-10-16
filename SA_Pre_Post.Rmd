@@ -26,6 +26,8 @@ time_zone <- "America/New_York"
 pathway_start <- mdy("7/13/21", tz = time_zone)
 #Story board notification went live on 9/8/21
 sb_start <- mdy("9/8/21", tz = time_zone)
+day.arrival.start <- hms::as_hms("06:00:00")
+night.arrival.start <- hms::as_hms("18:00:00")
 ```
 
 ```{r outcome variables, include=FALSE}
@@ -146,6 +148,12 @@ all_pts <- all_pts %>% mutate(
     relationship_with_patient == "Aqauintance" ~ "Aquaintaince",
     relationship_with_patient == "Intimate Partner" ~ "Intimate Partner",
     relationship_with_patient == "Unknown" |relationship_with_patient == "Stranger" ~ "Stranger/Unknown"
+  )) %>% 
+  mutate(arrive_time = as_hms(arrive_dt)) %>% 
+  mutate(day_night = case_when(
+    arrive_time >= day.arrival.start & arrive_time <= night.arrival.start ~ "Day",
+    arrive_time < day.arrival.start | arrive_time > night.arrival.start ~ "Night",
+    .default = "ERROR"
   ))
 all_pts$insurance_3 <- as_factor(all_pts$insurance_3)
 all_pts$insurance_3 <- relevel(all_pts$insurance_3, ref = "Public")
