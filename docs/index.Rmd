@@ -377,7 +377,7 @@ pp.cohort.3$sane_kit_offered <- as_factor(pp.cohort.3$sane_kit_offered)
 pp.cohort.3$sane_kit_offered <- relevel(pp.cohort.3$sane_kit_offered, ref = "No")
 pp.cohort.3$relationship_4_with_pt <- as_factor(pp.cohort.3$relationship_4_with_pt)
 pp.cohort.3$relationship_4_with_pt <- relevel(pp.cohort.3$relationship_4_with_pt, ref = "Stranger/Unknown")
-pp.model.secondary.1 <-  glm(sane_kit_offered ~ exposure.num + age + race_bwo + insurance_3,  family = "binomial", data = pp.cohort.3)
+pp.model.secondary.1 <-  glm(sane_kit_offered ~ exposure.num + age + race_bwo + female + english,  family = "binomial", data = pp.cohort.3)
 pp.secondary.results.1 <- tbl_regression(pp.model.secondary.1, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header( "Odds of Offering SANE Kit if Eligible") 
 summary(pp.model.secondary.1)
 pp.secondary.results.1
