@@ -26,8 +26,8 @@ time_zone <- "America/New_York"
 pathway_start <- mdy("7/13/21", tz = time_zone)
 #Story board notification went live on 9/8/21
 sb_start <- mdy("9/8/21", tz = time_zone)
-day.arrival.start <- hms::as_hms("06:00:00")
-night.arrival.start <- hms::as_hms("18:00:00")
+day.arrival.start <- hms::as_hms("03:00:00")
+night.arrival.start <- hms::as_hms("15:00:00")
 ```
 
 ```{r outcome variables, include=FALSE}
