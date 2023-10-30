@@ -152,13 +152,16 @@ all_pts <- all_pts %>% mutate(
     relationship_with_patient == "Aqauintance" ~ "Aquaintaince",
     relationship_with_patient == "Intimate Partner" ~ "Intimate Partner",
     relationship_with_patient == "Unknown" |relationship_with_patient == "Stranger" ~ "Stranger/Unknown"
-  )) %>% 
+  ),
+  ipv = if_else(relationship_with_patient == "Intimate Partner", 1, 0)
+  ) %>% 
   mutate(arrive_time = as_hms(arrive_dt)) %>% 
   mutate(day_night = case_when(
     arrive_time >= day.arrival.start & arrive_time <= night.arrival.start ~ "Day",
     arrive_time < day.arrival.start | arrive_time > night.arrival.start ~ "Night",
     .default = "ERROR"
-  ))
+  )) %>% 
+  mutate(threeto3 = if_else(day_night == "Day", 1, 0))
 all_pts$insurance_3 <- as_factor(all_pts$insurance_3)
 all_pts$insurance_3 <- relevel(all_pts$insurance_3, ref = "Public")
 
@@ -259,7 +262,7 @@ table1 <-
 table1
 ```
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r tables, echo=FALSE, message=FALSE, warning=FALSE}
 pp.table.2 <- pp.cohort.2 %>% select(exposure.char, advocate_offered, abx_given, sti_tx, hiv_pep_kit_ordered_num, hiv_labs, female_u55, pregnancy_test_ordered_num, prevent.preg, sane_kit_YN, sane_kit_missed, follow_up_at_discharge) %>% 
  set_variable_labels(advocate_offered = "Documentation of advocate contacted", sti_tx ="Recieved CDC reccomended STI prophalaxis" , abx_given = "Received any antibiotics", hiv_pep_kit_ordered_num = "HIV PEP ordered", hiv_labs = "Had indicated labs drawn if given HIV PEP", female_u55 = "Female under 55", pregnancy_test_ordered_num = "Pregnancy test ordered", prevent.preg = "Pregnancy prophalaxis ordered", sane_kit_YN = "SANE kit done", sane_kit_missed = "Under 120 hours and SANE kit not done", follow_up_at_discharge = "Has after discharge follow up") %>% tbl_summary(
     by = exposure.char,
@@ -277,3 +280,27 @@ table2 <-
   ) %>% as_gt()
 table2
 ```
+
+## Regression Outcomes
+
+### Primary Outcome: _Advocate Contacted_
+```{r regression1, echo=FALSE}
+cohort.1$advocate_offered <- as_factor(cohort.1$advocate_offered )
+cohort.1$advocate_offered <- relevel(cohort.1$advocate_offered, ref= "No Documentation of Pt Advocate")
+cohort.1 <- cohort.1 %>% mutate(exposure = if_else(pathway == "Used Pathway", 1, 0))
+model.primary <-  glm(advocate_offered ~ exposure + age + female + white + english + ipv, family = "binomial", data = cohort.1)
+primary.results <- tbl_regression(model.primary, exponentiate = TRUE) %>% add_global_p() 
+summary(model.primary)
+primary.results
+pp.cohort.2 <- pp.cohort.2 %>% mutate(exposure = exposure.num)
+pp.cohort.2$advocate_offered <- (as_factor(pp.cohort.2$advocate_offered))
+pp.cohort.2$advocate_offered <- relevel(pp.cohort.2$advocate_offered, ref= "No Documentation of Pt Advocate")
+pp.model.primary <-  glm(advocate_offered ~ exposure + age + female + white + english + ipv, family = "binomial", data = pp.cohort.2)
+pp.primary.results <- tbl_regression(pp.model.primary, exponentiate = TRUE) %>% add_global_p() 
+summary(pp.model.primary)
+pp.primary.results
+
+table3 <- tbl_merge(list(pp.primary.results, primary.results), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of documentation of offering call to PT advocate")
+table3
+```
+
