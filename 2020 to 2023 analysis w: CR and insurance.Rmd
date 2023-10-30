@@ -79,9 +79,9 @@ rf_visit_pull <- cn_visit_pull %>% mutate(
                              .default = 0)) %>%
   mutate(
     exposure.char = case_when(
-      exposure.num == 0 ~ "pre intervention",
-      exposure.num == 1 ~ "post intervention",
-      between == 1 ~ "between period",
+      exposure.num == 0 ~ "Pre-intervention",
+      exposure.num == 1 ~ "Post-intervention",
+      between == 1 ~ "Between Period",
       .default = NA
     )
   ) %>%
@@ -90,7 +90,7 @@ rf_visit_pull <- cn_visit_pull %>% mutate(
     exposure.char = factor(
       exposure.char,
       ordered = FALSE,
-      levels = c("pre intervention", "between period", "post intervention")
+      levels = c("Pre-intervention", "Between Period", "Post-intervention")
     ),
     pathway = factor(agile_md_used_yn, exclude = NULL),
     patient_birth_date = as_date(patient_birth_date)
