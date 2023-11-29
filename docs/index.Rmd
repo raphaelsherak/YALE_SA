@@ -457,3 +457,13 @@ sup.primary.results.2 <- tbl_regression(sup.mod.2, exponentiate = TRUE) %>% add_
 sup.primary.results.2
 ```
 
+# Supplemental Analysis: LOS
+
+admit_or_obs_order_time_to_ed_depart
+provider_to_avs_printed_time
+admit_or_obs_proc_name
+observation_admit_order_yn
+```{r}
+discharged<- 
+```
+

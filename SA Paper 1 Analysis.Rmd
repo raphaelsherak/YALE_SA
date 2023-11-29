@@ -7,7 +7,9 @@ output:
   html_notebook:
     toc: yes
 ---
-#Prep Code
+
+
+## Prep Code
 
 ```{r Initial Data and Package Prep, message=FALSE, warning=FALSE, include=FALSE}
 library(readr)
@@ -185,8 +187,10 @@ cohort.1 <- all_pts %>% filter(ed_arrival_date > sb_start) %>% filter(age > 17) 
 942 patient encounters from 2019-12-31 to 2022-12-24  
 76 patients who arrived between 7/13/21 and 9/8/21 were excluded  
 247 patients under 18 YO excluded  
-36 patients were excluded based on chart review (13 seen earlier, 13 reported not actually being assaulted, 2 were purely psychiatric presentations, 8 eloped before evaluation could be completed)  
+36 patients were excluded based on chart review (13 seen earlier, 13 reported not actually being assaulted, 2 were purely psychiatric presentations, 8 eloped before evaluation could be completed) 
+
 ## Table 1 and 2
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 pp.cohort.2$exposure.char <- as_factor(pp.cohort.2$exposure.char)
 pp.table.1 <- pp.cohort.2 %>%
@@ -290,15 +294,12 @@ cohort.1$advocate_offered <- relevel(cohort.1$advocate_offered, ref= "No Documen
 cohort.1 <- cohort.1 %>% mutate(exposure = if_else(pathway == "Used Pathway", 1, 0))
 model.primary <-  glm(advocate_offered ~ exposure + age + female + white + english + ipv, family = "binomial", data = cohort.1)
 primary.results <- tbl_regression(model.primary, exponentiate = TRUE) %>% add_global_p() 
-summary(model.primary)
-primary.results
+
 pp.cohort.2 <- pp.cohort.2 %>% mutate(exposure = exposure.num)
 pp.cohort.2$advocate_offered <- (as_factor(pp.cohort.2$advocate_offered))
 pp.cohort.2$advocate_offered <- relevel(pp.cohort.2$advocate_offered, ref= "No Documentation of Pt Advocate")
 pp.model.primary <-  glm(advocate_offered ~ exposure + age + female + white + english + ipv, family = "binomial", data = pp.cohort.2)
 pp.primary.results <- tbl_regression(pp.model.primary, exponentiate = TRUE) %>% add_global_p() 
-summary(pp.model.primary)
-pp.primary.results
 
 table3 <- tbl_merge(list(pp.primary.results, primary.results), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of documentation of offering call to PT advocate")
 table3
