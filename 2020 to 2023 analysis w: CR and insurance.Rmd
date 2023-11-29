@@ -330,6 +330,12 @@ final_variables <-full_merge_DF %>% select(1:2,16:41,44:91,105:127,141:145, 159:
 full_merge_reduced <- full_merge_DF %>% select(all_of(final_variables))
 ```
 makes CSV for patients
+** added to get ED dispo** because numbers would be off above, doing it retroactively
+
+```{r}
+dispo_var <- DF2 %>% select(ed_disposition, pat_enc_csn_id)
+full_merge_reduced <- left_join(full_merge_reduced, dispo_var, join_by("pat_enc_csn_id"), na_matches = "never", unmatched = "drop") %>% distinct()
+```
 
 ```{r}
 write_csv(full_merge_reduced, "SA_pts_reformatted.csv")
