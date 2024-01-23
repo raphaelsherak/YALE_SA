@@ -288,6 +288,20 @@ table2
 ## Regression Outcomes
 
 ### Primary Outcome: _Advocate Contacted_
+
+```{r advocate regression function}
+advocate.regression<-function(x){
+  x$advocate_offered <- as_factor(x$advocate_offered )
+  x$advocate_offered <- relevel(x$advocate_offered, ref= "No Documentation of Pt Advocate")
+  x <- x %>% mutate(exposure = if_else(pathway == "Used Pathway", 1, 0))
+  model <-  glm(advocate_offered ~ exposure + age + female + white + english + ipv, family = "binomial", data = x)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p() 
+  return(model.results)
+}
+```
+
+
+All patients
 ```{r regression1, echo=FALSE}
 cohort.1$advocate_offered <- as_factor(cohort.1$advocate_offered )
 cohort.1$advocate_offered <- relevel(cohort.1$advocate_offered, ref= "No Documentation of Pt Advocate")
@@ -304,4 +318,46 @@ pp.primary.results <- tbl_regression(pp.model.primary, exponentiate = TRUE) %>% 
 table3 <- tbl_merge(list(pp.primary.results, primary.results), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of documentation of offering call to PT advocate")
 table3
 ```
+
+Patients Under 120 Hours:
+
+```{r under 120 regression, echo=FALSE}
+pathway.u120 <- cohort.1 %>% filter(under120h == TRUE)
+pp.u120 <- pp.cohort.2 %>% filter(under120h == TRUE)
+pathway.u120$advocate_offered <- as_factor(pathway.u120$advocate_offered )
+pathway.u120$advocate_offered <- relevel(pathway.u120$advocate_offered, ref= "No Documentation of Pt Advocate")
+pathway.u120 <- pathway.u120 %>% mutate(exposure = if_else(pathway == "Used Pathway", 1, 0))
+model.primary.120 <-  glm(advocate_offered ~ exposure + age + female + white + english + ipv, family = "binomial", data = pathway.u120)
+primary.results.120 <- tbl_regression(model.primary.120, exponentiate = TRUE) %>% add_global_p() 
+
+pp.u120 <- pp.u120 %>% mutate(exposure = exposure.num)
+pp.u120$advocate_offered <- (as_factor(pp.u120$advocate_offered))
+pp.u120$advocate_offered <- relevel(pp.u120$advocate_offered, ref= "No Documentation of Pt Advocate")
+pp.model.primary.120 <-  glm(advocate_offered ~ exposure + age + female + white + english + ipv, family = "binomial", data = pp.u120)
+pp.primary.results.120 <- tbl_regression(pp.model.primary.120, exponentiate = TRUE) %>% add_global_p() 
+
+table.reg.u120 <- tbl_merge(list(pp.primary.results.120, primary.results.120), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of documentation of offering call to PT advocate if Presented to ED <120 Hours Since Assault")
+table.reg.u120
+```
+### Secondary Outcome: _Advocate Contacted/Offerred *IF* SANE Kit Done_
+```{r under 120 SK done Reg, echo=FALSE}
+pathway.u120.sk <- cohort.1 %>% filter(under120h == TRUE, sane_kit_YN == "Yes")
+pp.u120.sk <- pp.cohort.2 %>%  filter(under120h == TRUE, sane_kit_YN == "Yes")
+pathway.u120.sk$advocate_offered <- as_factor(pathway.u120.sk$advocate_offered )
+pathway.u120.sk$advocate_offered <- relevel(pathway.u120.sk$advocate_offered, ref= "No Documentation of Pt Advocate")
+pathway.u120.sk <- pathway.u120.sk %>% mutate(exposure = if_else(pathway == "Used Pathway", 1, 0))
+model.primary.120.sk <-  glm(advocate_offered ~ exposure + age + female + white + english + ipv, family = "binomial", data = pathway.u120.sk)
+primary.results.120.sk <- tbl_regression(model.primary, exponentiate = TRUE) %>% add_global_p() 
+
+pp.u120.sk <- pp.u120.sk %>% mutate(exposure = exposure.num)
+pp.u120.sk$advocate_offered <- (as_factor(pp.u120.sk$advocate_offered))
+pp.u120.sk$advocate_offered <- relevel(pp.u120.sk$advocate_offered, ref= "No Documentation of Pt Advocate")
+pp.model.primary.120.sk <-  glm(advocate_offered ~ exposure + age + female + white + english + ipv, family = "binomial", data = pp.u120.sk)
+pp.primary.results.120.sk <- tbl_regression(pp.model.primary.120.sk, exponentiate = TRUE) %>% add_global_p() 
+
+table.reg.sk120 <- tbl_merge(list(pp.primary.results.120.sk, primary.results.120.sk), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of documentation of offering call to PT advocate if SANE Kit Done")
+table.reg.sk120
+```
+
+### Secondary Outcome: _For Women _
 
