@@ -7,10 +7,7 @@ output:
   html_notebook:
     toc: yes
 ---
-
-
 ## Prep Code
-
 ```{r Initial Data and Package Prep, message=FALSE, warning=FALSE, include=FALSE}
 library(readr)
 library(tidyverse)
@@ -156,6 +153,11 @@ all_pts <- all_pts %>% mutate(
     relationship_with_patient == "Intimate Partner" ~ "Intimate Partner",
     relationship_with_patient == "Unknown" |relationship_with_patient == "Stranger" ~ "Stranger/Unknown"
   ),
+  intoxicated = case_when(
+    Etoh == 1 | Drugs == 1 ~ 1,
+    Etoh == 0 & Drugs == 0 ~ 0,
+    .default = 0
+  ),
   ipv = if_else(relationship_with_patient == "Intimate Partner", 1, 0)
   ) %>% 
   mutate(arrive_time = as_hms(arrive_dt)) %>% 
@@ -200,9 +202,8 @@ tbl.one.fxn <- function(df) {
                      under120h,
                      english,
                      ambulance,
+                     intoxicated,
                      Psych,
-                     Etoh,
-                     Drugs,
                      ipv) %>%
     set_variable_labels(
       age = "Age",
@@ -211,7 +212,9 @@ tbl.one.fxn <- function(df) {
       under120h = "Presented within 120 of assault",
       ambulance = "Arrived by EMS",
       english = "English speaking",
-      ipv = "Assailant was Intimate Partner"
+      ipv = "Assailant was Intimate Partner",
+      intoxicated = "Diagnosis of Intoxication",
+      Psych = "Psychiatric Diagnosis"
     ) %>%
     tbl_summary(
       by = exposure.tab,
@@ -248,9 +251,7 @@ x<- data %>% mutate(sane_kit_u120 = case_when(
     exposure.tab,
     advocate_offered,
     abx_given,
-    sti_tx,
     hiv_pep_kit_ordered_num,
-    hiv_labs,
     female_u55,
     pregnancy_test_ordered_num,
     prevent.preg,
@@ -260,10 +261,8 @@ x<- data %>% mutate(sane_kit_u120 = case_when(
   ) %>%
   set_variable_labels(
     advocate_offered = "Documentation of advocate contacted",
-    sti_tx = "Recieved CDC reccomended STI prophalaxis" ,
-    abx_given = "Received any antibiotics",
+    abx_given = "PEP antibiotics ordered",
     hiv_pep_kit_ordered_num = "HIV PEP ordered",
-    hiv_labs = "Had indicated labs drawn if given HIV PEP",
     female_u55 = "Female under 55",
     pregnancy_test_ordered_num = "Pregnancy test ordered",
     prevent.preg = "Pregnancy prophalaxis ordered",
@@ -274,7 +273,7 @@ x<- data %>% mutate(sane_kit_u120 = case_when(
                     percent = "column",
                     missing = "no",
                     statistic = list(
-                      c(hiv_labs, prevent.preg, sti_tx, pregnancy_test_ordered_num, sane_kit_u120) ~ "{n}"
+                      c(hiv_pep_kit_ordered_num, prevent.preg, abx_given, pregnancy_test_ordered_num, sane_kit_u120) ~ "{n}"
                     ))
 return(x)
 }
@@ -399,13 +398,13 @@ table.reg.sk120
 
 ```{r}
 preg.test.reg<-function(data, exposure){
-  model<-glm(pregnancy_test_ordered_num ~ exposure + white + english + ambulance, family = "binomial", data = data)
+  model<-glm(pregnancy_test_ordered_num ~ exposure + white + english + ambulance + age + intoxicated, family = "binomial", data = data)
   model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
   return(model.results)
 }
 
 preg.prev.reg<-function(data, exposure){
-   model<-glm(prevent.preg ~ exposure + white + english + ambulance, family = "binomial", data = data)
+   model<-glm(prevent.preg ~ exposure + white + english + ambulance + age + intoxicated, family = "binomial", data = data)
   model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
   return(model.results)
 }
@@ -426,3 +425,23 @@ preg.prev.path<-pathway.u120 %>% filter(female == 1, age <= 55) %>% preg.prev.re
 table.reg.pregprev <- tbl_merge(list(preg.prev.pp, preg.prev.path), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of Pregnancy Prophylaxis Ordered (if =/<55 & <120 hrs)")
 table.reg.pregprev
 ```
+### Secondary Outcome: _HIV PEP_ 
+
+```{r Hiv PEP fxn}
+hiv.pep.reg<-function(data, exposure){
+  model<-glm(hiv_pep_kit_ordered_num ~ exposure + white + english + ambulance + age + intoxicated, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+```
+
+```{r HIV PEP table}
+pathway.u72 <- cohort.1 %>% filter(u72 == 1)
+pp.u27 <- pp.cohort.2 %>% filter(u72 == 1)
+
+tbl.pep.pp <- hiv.pep.reg(pp.u27, pp.u120$exposure)
+tbl.pep.path <- hiv.pep.reg(pathway.u72, pathway.u72$exposure)
+tbl.pep.hiv <- tbl_merge(list(tbl.pep.pp, tbl.pep.path), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of Receiving HIV PEP Presented to ED <72 Hours Since Assault")
+tbl.pep.hiv
+```
+
