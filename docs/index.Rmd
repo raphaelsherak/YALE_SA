@@ -239,7 +239,12 @@ table1
 ```{r tbl 2 fxns, echo=FALSE, message=FALSE, warning=FALSE}
 
 tbl.two.fxn<-function(data){
-x<- data %>% select(
+x<- data %>% mutate(sane_kit_u120 = case_when(
+    under120h == TRUE & sane_kit_done == 1 ~ 1,
+    under120h == TRUE & sane_kit_done != 1 ~ 0,
+    .default = NA
+  )) %>% 
+  select(
     exposure.tab,
     advocate_offered,
     abx_given,
@@ -250,7 +255,7 @@ x<- data %>% select(
     pregnancy_test_ordered_num,
     prevent.preg,
     sane_kit_YN,
-    sane_kit_missed,
+    sane_kit_u120,
     follow_up_at_discharge
   ) %>%
   set_variable_labels(
@@ -263,12 +268,13 @@ x<- data %>% select(
     pregnancy_test_ordered_num = "Pregnancy test ordered",
     prevent.preg = "Pregnancy prophalaxis ordered",
     sane_kit_YN = "SANE kit done",
-    sane_kit_missed = "Under 120 hours and SANE kit not done",
+    sane_kit_u120 = "Under 120 hours and SANE kit done",
     follow_up_at_discharge = "Has after discharge follow up"
   ) %>% tbl_summary(by = exposure.tab,
                     percent = "column",
+                    missing = "no",
                     statistic = list(
-                      c(hiv_labs, prevent.preg, sti_tx, pregnancy_test_ordered_num) ~ "{n}"
+                      c(hiv_labs, prevent.preg, sti_tx, pregnancy_test_ordered_num, sane_kit_u120) ~ "{n}"
                     ))
 return(x)
 }
