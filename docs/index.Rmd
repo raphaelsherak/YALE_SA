@@ -1,11 +1,13 @@
 ---
 title: "SA Paper 1 Analysis"
 output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    toc: yes
   html_document:
     toc: yes
     df_print: paged
-  html_notebook:
-    toc: yes
 ---
 
 
@@ -395,7 +397,7 @@ table.reg.sk120 <- tbl_merge(list(pp.primary.results.120.sk, primary.results.120
 table.reg.sk120
 ```
 
-### Secondary Outcome: _For Women ≤ 55 Presenting  < 120 Hours_
+### Secondary Outcome: _For Women =/< 55 Presenting  < 120 Hours_
 
 ```{r}
 preg.test.reg<-function(data, exposure){
@@ -414,7 +416,7 @@ Pregnancy test ordered?
 ```{r preg test reg table}
 preg.test.pp<-pp.u120 %>% filter(female == 1, age <= 55) %>% preg.test.reg(., .$exposure)
 preg.test.path<-pathway.u120 %>% filter(female == 1, age <= 55) %>% preg.test.reg(., .$exposure)
-table.reg.pregtest <- tbl_merge(list(preg.test.pp, preg.test.path), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of Pregnancy Test Ordered (if ≤55 & <120 hrs)")
+table.reg.pregtest <- tbl_merge(list(preg.test.pp, preg.test.path), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of Pregnancy Test Ordered (if =/<55 & <120 hrs)")
 table.reg.pregtest
 
 ```
@@ -423,6 +425,6 @@ Pregnancy prophylaxis ordered?
 ```{r preg pep table}
 preg.prev.pp<-pp.u120 %>% filter(female == 1, age <= 55) %>% preg.prev.reg(., .$exposure)
 preg.prev.path<-pathway.u120 %>% filter(female == 1, age <= 55) %>% preg.prev.reg(., .$exposure)
-table.reg.pregprev <- tbl_merge(list(preg.prev.pp, preg.prev.path), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of Pregnancy Prophylaxis Ordered (if ≤55 & <120 hrs)")
+table.reg.pregprev <- tbl_merge(list(preg.prev.pp, preg.prev.path), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of Pregnancy Prophylaxis Ordered (if =/<55 & <120 hrs)")
 table.reg.pregprev
 ```
