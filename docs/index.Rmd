@@ -1,13 +1,11 @@
 ---
 title: "SA Paper 1 Analysis"
 output:
-  pdf_document:
-    toc: yes
-  html_notebook:
-    toc: yes
   html_document:
     toc: yes
     df_print: paged
+  html_notebook:
+    toc: yes
 ---
 
 
