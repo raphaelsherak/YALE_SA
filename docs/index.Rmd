@@ -110,6 +110,11 @@ all_pts <- all_pts %>% mutate(
       sti_tx == 0 & abx_given == 1 ~ 0,
       .default = NA
     ),
+    tbl_prevent_hiv = case_when(
+      time_since_sexual_assault_if_number_k_is_y != 0 ~ NA,
+      time_since_sexual_assault_if_number_k_is_y == 0 & hiv_pep_kit_ordered_num == 1 ~ 1,
+      ime_since_sexual_assault_if_number_k_is_y == 0 & hiv_pep_kit_ordered_num == 0 ~ 0
+    ),
     tbl_hiv_labs = case_when(
       hiv_pep_kit_ordered_num == 1 & hiv_labs == 1 ~ 1,
        hiv_pep_kit_ordered_num == 1 & hiv_labs == 0 ~ 0,
@@ -240,42 +245,50 @@ table1
 ```
 
 ```{r tbl 2 fxns, echo=FALSE, message=FALSE, warning=FALSE}
-
-tbl.two.fxn<-function(data){
-x<- data %>% mutate(sane_kit_u120 = case_when(
-    under120h == TRUE & sane_kit_done == 1 ~ 1,
-    under120h == TRUE & sane_kit_done != 1 ~ 0,
-    .default = NA
-  )) %>% 
-  select(
-    exposure.tab,
-    advocate_offered,
-    abx_given,
-    hiv_pep_kit_ordered_num,
-    female_u55,
-    pregnancy_test_ordered_num,
-    prevent.preg,
-    sane_kit_YN,
-    sane_kit_u120,
-    follow_up_at_discharge
+#note to self-> make it so males, over55 are NA so table can be fixed for proper %
+tbl.two.fxn <- function(data) {
+  x <- data %>% mutate(
+    sane_kit_u120 = case_when(
+      under120h == TRUE & sane_kit_done == 1 ~ 1,
+      under120h == TRUE & sane_kit_done != 1 ~ 0,
+      .default = NA
+    ),
   ) %>%
-  set_variable_labels(
-    advocate_offered = "Documentation of advocate contacted",
-    abx_given = "PEP antibiotics ordered",
-    hiv_pep_kit_ordered_num = "HIV PEP ordered",
-    female_u55 = "Female under 55",
-    pregnancy_test_ordered_num = "Pregnancy test ordered",
-    prevent.preg = "Pregnancy prophalaxis ordered",
-    sane_kit_YN = "SANE kit done",
-    sane_kit_u120 = "Under 120 hours and SANE kit done",
-    follow_up_at_discharge = "Has after discharge follow up"
-  ) %>% tbl_summary(by = exposure.tab,
-                    percent = "column",
-                    missing = "no",
-                    statistic = list(
-                      c(hiv_pep_kit_ordered_num, prevent.preg, abx_given, pregnancy_test_ordered_num, sane_kit_u120) ~ "{n}"
-                    ))
-return(x)
+    select(
+      exposure.tab,
+      advocate_offered,
+      abx_given,
+      hiv_pep_kit_ordered_num,
+      female_u55,
+      pregnancy_test_ordered_num,
+      prevent.preg,
+      sane_kit_YN,
+      sane_kit_u120,
+      follow_up_at_discharge
+    ) %>%
+    set_variable_labels(
+      advocate_offered = "Documentation of advocate contacted",
+      abx_given = "PEP antibiotics ordered",
+      hiv_pep_kit_ordered_num = "HIV PEP ordered",
+      female_u55 = "Female under 55",
+      pregnancy_test_ordered_num = "Pregnancy test ordered",
+      prevent.preg = "Pregnancy prophalaxis ordered",
+      sane_kit_YN = "SANE kit done",
+      sane_kit_u120 = "Under 120 hours and SANE kit done",
+      follow_up_at_discharge = "Has after discharge follow up"
+    ) %>% tbl_summary(
+      by = exposure.tab,
+      percent = "column",
+      missing = "no",
+      statistic = list(
+        c(
+          hiv_pep_kit_ordered_num,
+          prevent.preg,
+          pregnancy_test_ordered_num
+        ) ~ "{n}"
+      )
+    )
+  return(x)
 }
 
 ```
@@ -441,7 +454,7 @@ pp.u27 <- pp.cohort.2 %>% filter(u72 == 1)
 
 tbl.pep.pp <- hiv.pep.reg(pp.u27, pp.u120$exposure)
 tbl.pep.path <- hiv.pep.reg(pathway.u72, pathway.u72$exposure)
-tbl.pep.hiv <- tbl_merge(list(tbl.pep.pp, tbl.pep.path), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of Receiving HIV PEP Presented to ED <72 Hours Since Assault")
+tbl.pep.hiv <- tbl_merge(list(tbl.pep.pp, tbl.pep.path), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of Receiving HIV PEP if Presented to ED <72 Hours Since Assault")
 tbl.pep.hiv
 ```
 
