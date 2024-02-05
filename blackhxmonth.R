@@ -1,3 +1,4 @@
+theme_gtsummary_compact()
 all_pts_bw <-
   all_pts %>% filter(race_bwo != "Other" &
                        age > 17 &
@@ -38,6 +39,8 @@ bw_tbl1 <- all_pts_bw %>%
     female_u55,
     advocate_offered,
     tbl_sti_tx,
+    tbl_prevent_hiv,
+    tbl_hiv_labs,
     tbl_preg_test,
     tbl_prevent_preg,
     sane_kit_YN,
@@ -63,6 +66,8 @@ bw_tbl1 <- all_pts_bw %>%
     follow_up_at_discharge = "Has after discharge follow up",
     short_LOS = "Length of Stay (minutes)",
     tbl_sti_tx = "Given Post-Exposure Antibiotics",
+    tbl_prevent_hiv = "Given Indicated HIV PEP",
+    tbl_hiv_labs = "Had Indicated Labs if Given HIV PEP",
     tbl_prevent_preg = "Given Indicated Pregnancy Prophylaxis",
     tbl_preg_test = "Had Indicated Pregnancy Test"
   ) %>%
@@ -74,5 +79,7 @@ bw_tbl1 <- all_pts_bw %>%
       age ~ "{median} ({p25}, {p75})",
       short_LOS ~ "{median} ({p25}, {p75})"
     )
-  ) %>%
-  add_p() %>% separate_p_footnotes()
+  ) 
+
+bw_tbl1_p <- bw_tbl1%>%
+  add_p() %>% separate_p_footnotes() 

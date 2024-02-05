@@ -197,8 +197,12 @@ r_DF1 <- DF2 %>%
     insurance_pay = case_when(
       !is.na(primary_coverage_payor_name.x) ~ primary_coverage_payor_name.x,
       is.na(primary_coverage_payor_name.x) & !is.na(primary_coverage_payor_name.y) ~ primary_coverage_payor_name.y
-    ) #only 5 patients have NA for patient.language.x. Will drop patient_language.y
-  ) 
+    ),
+    patient_language.x = case_when(
+      !is.na(patient_language.x) ~ patient_language.x,
+      is.na(patient_language.x) ~ patient_language.y
+    )
+      ) 
 ```
 
 insurance categories:

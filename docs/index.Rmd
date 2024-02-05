@@ -113,7 +113,7 @@ all_pts <- all_pts %>% mutate(
     tbl_prevent_hiv = case_when(
       time_since_sexual_assault_if_number_k_is_y != 0 ~ NA,
       time_since_sexual_assault_if_number_k_is_y == 0 & hiv_pep_kit_ordered_num == 1 ~ 1,
-      ime_since_sexual_assault_if_number_k_is_y == 0 & hiv_pep_kit_ordered_num == 0 ~ 0
+      time_since_sexual_assault_if_number_k_is_y == 0 & hiv_pep_kit_ordered_num == 0 ~ 0
     ),
     tbl_hiv_labs = case_when(
       hiv_pep_kit_ordered_num == 1 & hiv_labs == 1 ~ 1,
