@@ -404,7 +404,7 @@ f.advocate.regression<-function(data, exp){
   data <- data %>% filter(sane_kit_done != 4)
   data$advocate_offered <- as_factor(data$advocate_offered )
   data$advocate_offered <- relevel(data$advocate_offered, ref= "No Documentation of Pt Advocate")
-  model <-  glm(advocate_offered ~ exposure+ age + white + ipv + sane_ED, family = "binomial", data = data)
+  model <-  glm(advocate_offered ~ exposure+ age + white + ipv +  intoxicated + sane_ED, family = "binomial", data = data)
   model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
   return(model.results)
 }
