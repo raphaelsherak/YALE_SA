@@ -22,7 +22,10 @@ library(survival)
 library(ggsurvfit)
 library(table1)
 library(hms)
+library(readxl)
+epicdata <- read_excel("~/Documents/Current_Projects/Sexual_Assault/new_SA_YNHH/Updated YNHH SA code/C_F_AllPatients_2020to2023.xlsx") %>% select(1, contains("Location")) %>% rename("pat_enc_csn_id" = "Pat Enc Csn ID...1") %>% clean_names()
 all_pts <- read_csv("~/Documents/Current_Projects/Sexual_Assault/new_SA_YNHH/Updated YNHH SA code/SA_pts_reformatted.csv")
+all_pts<-left_join(all_pts, epicdata, by = "pat_enc_csn_id")
 # set TZ to east coast standard
 time_zone <- "America/New_York"
 #pathway went live on 7/13/21
@@ -179,7 +182,7 @@ between_pts <- all_pts %>% filter(between == 1)
 n_between <- n_distinct(between_pts$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
 pp.cohort.1 <- all_pts %>% filter(between == 0) %>% filter(age > 17)
 excluded_patients <- pp.cohort.1  %>% filter(!is.na(exclude))
-pp.cohort.2 <- pp.cohort.1  %>% filter(is.na(exclude)) %>% mutate(exposure.tab = exposure.char)
+pp.cohort.2 <- pp.cohort.1  %>% filter(is.na(exclude)) %>% mutate(exposure.tab = exposure.char) 
 excluded_patients <- excluded_patients %>% add_value_labels(reason_to_exclude = c( "Seen earlier" = 1 , "Patient reports not being assaulted" = 2, "Psych" = 3, "not excluded" = 4, "Eloped" = 5)) %>% to_factor()
 excluded_patients %>% group_by(reason_to_exclude) %>% summarise(n=n())
 n_excluded <-n_distinct(excluded_patients$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
@@ -189,7 +192,8 @@ number_of_minors <-all_pts %>% filter(between == 0) %>% filter(age < 18)
 number_of_minors <- n_distinct(number_of_minors$pat_enc_csn_id, na.rm = TRUE) %>% as.character()
 cat("  ", number_of_minors, "patients under 18 YO excluded")
 rm(n_excluded, number_of_minors, n_between)
-cohort.1 <- all_pts %>% filter(ed_arrival_date > sb_start) %>% filter(age > 17) %>% filter(is.na(exclude)) %>% mutate(exposure.tab = pathway)
+cohort.1 <- all_pts %>% filter(ed_arrival_date > sb_start) %>% filter(age > 17) %>% filter(is.na(exclude)) %>% mutate(exposure.tab = pathway) 
+
 ```
 
 942 patient encounters from 2019-12-31 to 2022-12-24  
@@ -233,8 +237,8 @@ tbl.one.fxn <- function(df) {
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-pp.cohort.2$exposure.char <- as_factor(pp.cohort.2$exposure.char)
-pp.table.1 <- tbl.one.fxn(pp.cohort.2)
+pp.cohort.2$exposure.tab <- factor(pp.cohort.2$exposure.tab, levels=c("Pre-intervention", "Post-intervention"))
+pp.table.1 <- tbl.one.fxn(pp.cohort.2) %>% add_overall()
 table.1 <- tbl.one.fxn(cohort.1)
   table1 <-
     tbl_merge(
@@ -260,7 +264,7 @@ tbl.two.fxn <- function(data) {
       abx_given,
       hiv_pep_kit_ordered_num,
       female_u55,
-      pregnancy_test_ordered_num,
+      tbl_preg_test,
       prevent.preg,
       sane_kit_YN,
       sane_kit_u120,
@@ -271,7 +275,7 @@ tbl.two.fxn <- function(data) {
       abx_given = "PEP antibiotics ordered",
       hiv_pep_kit_ordered_num = "HIV PEP ordered",
       female_u55 = "Female under 55",
-      pregnancy_test_ordered_num = "Pregnancy test ordered",
+      tbl_preg_test = "Pregnancy test ordered",
       prevent.preg = "Pregnancy prophalaxis ordered",
       sane_kit_YN = "SANE kit done",
       sane_kit_u120 = "Under 120 hours and SANE kit done",
@@ -280,13 +284,7 @@ tbl.two.fxn <- function(data) {
       by = exposure.tab,
       percent = "column",
       missing = "no",
-      statistic = list(
-        c(
-          hiv_pep_kit_ordered_num,
-          prevent.preg,
-          pregnancy_test_ordered_num
-        ) ~ "{n}"
-      )
+      statistic = contains("tbl") ~ "{n}/{N_nonmiss} ({p}%)"
     )
   return(x)
 }
@@ -295,13 +293,14 @@ tbl.two.fxn <- function(data) {
 
 
 ```{r tables, echo=FALSE, message=FALSE, warning=FALSE}
-pp.table.2 <-tbl.two.fxn(pp.cohort.2)
+pp.cohort.2$exposure.tab <- factor(pp.cohort.2$exposure.tab, levels=c("Pre-intervention", "Post-intervention"))
+pp.table.2 <-tbl.two.fxn(pp.cohort.2) %>% add_overall()
 path.table.2 <-tbl.two.fxn(cohort.1)
  table.2 <-tbl_merge(
     list(pp.table.2, path.table.2),
     tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")
   ) %>% as_gt()
-table.2
+table.2 
 ```
 
 ## Regression Outcomes
@@ -342,7 +341,7 @@ tbl.reg.adv.u120 <- tbl_merge(list(tbl.reg.pp.adv.u120, tbl.reg.path.adv.u120), 
 tbl.reg.adv.u120
 ```
 ### Primary Outcome: _SANE Kit_
-note: restricted to pts <120 hours from assault, female (only 12 men) english speakers (only 11)
+note: restricted to pts <120 hours from assault, female (only 12 men) english speakers (only 11 non-english speaking)
 ```{r sane kit fxns}
 sane.off.reg<-function(data, exposure){
    model <-  glm(sane_kit_offered ~ exposure + age + white + ipv, family = "binomial", data = data)
