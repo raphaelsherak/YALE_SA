@@ -107,6 +107,10 @@ all_pts <- all_pts %>% mutate(
     sane_kit_done %in% c(1,2,3) ~ "SANE kit done/not indicated",
     sane_kit_done == 4 ~ "Not done due to concurrent psychiatric concerns"
   ),
+  sane_kit_offered = case_when(
+    sane_kit_done == 1 | sane_kit_done == 2  ~ "Sane Kit Offered",
+    sane_kit_done == 0 | sane_kit_done == 3 | sane_kit_done == 4 ~ "Sane Kit Not Offered"
+  ),
   sane_ED = if_else(
     discharge_location %in% c("YSC", "YSC-CIU", "SRC"), 1,0 
     ),
@@ -172,6 +176,7 @@ all_pts <- all_pts %>% mutate(
     Etoh == 0 & Drugs == 0 ~ 0,
     .default = 0
   ),
+  sane_advocate_offered = if_else(advocate_offered == "Advocate Offered" & sane_kit_offered == "Sane Kit Offered", 1, 0),
   ipv = if_else(relationship_with_patient == "Intimate Partner", 1, 0)
   ) %>% 
   mutate(arrive_time = as_hms(arrive_dt)) %>% 
@@ -180,32 +185,39 @@ all_pts <- all_pts %>% mutate(
     arrive_time < day.arrival.start | arrive_time > night.arrival.start ~ "Night",
     .default = "ERROR"
   )) %>% 
-  mutate(threeto3 = if_else(day_night == "Day", 1, 0))
+  mutate(threeto3 = if_else(day_night == "Day", 1, 0)) %>%  #adding line to make it so patients who did not have sane kit done due to psych concerns are excluded
+  mutate(exclude = case_when(
+    exclude == 1 ~ 1,
+    sane_kit_done == 4 ~ 1,
+    is.na(exclude) ~ NA,
+    .default = NA)) 
 all_pts$insurance_3 <- as_factor(all_pts$insurance_3)
 all_pts$insurance_3 <- relevel(all_pts$insurance_3, ref = "Public")
 
-between_pts <- all_pts %>% filter(between == 1)
-n_between <- n_distinct(between_pts$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
-pp.cohort.1 <- all_pts %>% filter(between == 0) %>% filter(age > 17)
-excluded_patients <- pp.cohort.1  %>% filter(!is.na(exclude))
-pp.cohort.2 <- pp.cohort.1  %>% filter(is.na(exclude)) %>% mutate(exposure.tab = exposure.char) 
-excluded_patients <- excluded_patients %>% add_value_labels(reason_to_exclude = c( "Seen earlier" = 1 , "Patient reports not being assaulted" = 2, "Psych" = 3, "not excluded" = 4, "Eloped" = 5)) %>% to_factor()
-excluded_patients %>% group_by(reason_to_exclude) %>% summarise(n=n())
-n_excluded <-n_distinct(excluded_patients$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
-cat(" ", n_between, "patients who arrived between 7/13/21 and 9/8/21 were excluded")
-cat("-", n_excluded, "patients were excluded based on chart review.")
-number_of_minors <-all_pts %>% filter(between == 0) %>% filter(age < 18)
+number_of_minors <-all_pts %>% filter(age < 18) #changed it so age is first exclusion criteria
 number_of_minors <- n_distinct(number_of_minors$pat_enc_csn_id, na.rm = TRUE) %>% as.character()
 cat("  ", number_of_minors, "patients under 18 YO excluded")
+excluded_patients <- pp.cohort.1  %>% mutate(exclude = ifelse(sane_kit_done == 4, NA, exclude)) %>% filter(!is.na(exclude)) %>%
+  mutate(reason_to_exclude = if_else(sane_kit_done == 4, 3, reason_to_exclude)) #if sane kit not done b/c psych that is also reason to eclude now
+between_pts <- all_pts %>% filter(age > 17, between == 1)
+n_between <- n_distinct(between_pts$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
+pp.cohort.1 <- all_pts %>% filter(between == 0) %>% filter(age > 17)
+pp.cohort.2 <- pp.cohort.1  %>% filter(is.na(exclude)) %>% mutate(exposure.tab = exposure.char) 
+excluded_patients <- excluded_patients %>% add_value_labels(reason_to_exclude = c( "Seen earlier" = 1 , "Patient reports not being assaulted" = 2, "Psych" = 3, "not excluded" = 4, "Eloped" = 5)) %>% to_factor()
+excluded_patients %>% group_by(reason_to_exclude) %>% summarise(n=n()) %>% print()
+n_excluded <-n_distinct(excluded_patients$pat_enc_csn_id, na.rm=TRUE) %>% as.character()
+cat("-", n_excluded, "patients were excluded based on chart review.")
+cat(" ", n_between, "patients who arrived between 7/13/21 and 9/8/21 were excluded")
 rm(n_excluded, number_of_minors, n_between)
 cohort.1 <- all_pts %>% filter(ed_arrival_date > sb_start) %>% filter(age > 17) %>% filter(is.na(exclude)) %>% mutate(exposure.tab = pathway) 
 
 ```
 
 942 patient encounters from 2019-12-31 to 2022-12-24  
-76 patients who arrived between 7/13/21 and 9/8/21 were excluded  
-247 patients under 18 YO excluded  
-36 patients were excluded based on chart review (13 seen earlier, 13 reported not actually being assaulted, 2 were purely psychiatric presentations, 8 eloped before evaluation could be completed) 
+In order of exclusion: age -> chart review -> between period
+<!-- 76 patients who arrived between 7/13/21 and 9/8/21 were excluded   -->
+<!-- 247 patients under 18 YO excluded   -->
+<!-- 36 patients were excluded based on chart review (13 seen earlier, 13 reported not actually being assaulted, 2 were purely psychiatric presentations, 8 eloped before evaluation could be completed)  -->
 
 ## Table 1 and 2
 ```{r tbl 1 fxn, echo=FALSE, message=FALSE, warning=FALSE}
@@ -400,9 +412,9 @@ table.reg.sk
 
 ```{r english female only reg adv fxn} 
 #makes regression but w/o female variable
-f.advocate.regression<-function(data, exp){
+f.advocate.regression<-function(data, exposure){
   data <- data %>% filter(sane_kit_done != 4)
-  data$advocate_offered <- as_factor(data$advocate_offered )
+  data$advocate_offered <- as_factor(data$advocate_offered)
   data$advocate_offered <- relevel(data$advocate_offered, ref= "No Documentation of Pt Advocate")
   model <-  glm(advocate_offered ~ exposure+ age + white + ipv +  intoxicated + sane_ED, family = "binomial", data = data)
   model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
@@ -418,6 +430,16 @@ pp.primary.results.120.sk<-f.advocate.regression(pp.u120.sk, pp.u120.sk$exposure
 primary.results.120.sk<-f.advocate.regression(pathway.u120.sk, pathway.u120.sk$exposure)
 table.reg.sk120 <- tbl_merge(list(pp.primary.results.120.sk, primary.results.120.sk), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of documentation of offering call to PT advocate if SANE Kit Done")
 table.reg.sk120
+```
+#### Terteriary Outcome: _Advocate Contacted/Offerred *IF* SANE Kit **Offered** (restricted to English speaking female patients)_
+
+```{r}
+pathway.u120.sk_o <- cohort.1 %>% filter(under120h == TRUE, sane_kit_offered == "Sane Kit Offered", female == 1, english == 1)
+pp.u120.sk_o <- pp.cohort.2 %>%  filter(under120h == TRUE, sane_kit_offered == "Sane Kit Offered", female == 1, english == 1)
+pp.primary.results.120.sk_o<-f.advocate.regression(pp.u120.sk_o, pp.u120.sk_o$exposure)
+primary.results.120.sk_o<-f.advocate.regression(pathway.u120.sk_o, pathway.u120.sk_o$exposure)
+table.reg.sk120_o <- tbl_merge(list(pp.primary.results.120.sk_o, primary.results.120.sk_o), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of documentation of offering call to PT advocate if SANE Kit Offerred")
+table.reg.sk120_o
 ```
 
 ### Secondary Outcome: _For Women =/< 55 Presenting  < 120 Hours_
@@ -473,6 +495,50 @@ tbl.pep.hiv
 
 ## Graphs
 
+### Percent pathway, sane kit done and advocate offered over time
+
+```{r line over time graphs}
+month_line_df <-
+  pp.cohort.2 %>% mutate(
+    month = floor_date(arrive_dt, unit = "month"),
+    advocate = case_when(
+      advocate_offered == "Advocate Offered" ~ 1,
+      advocate_offered == "No Documentation of Pt Advocate" ~ 0,
+      .default = NA
+    ),
+    did_SANE_kit = if_else(sane_kit_YN == "Yes", 1, 0)
+  ) %>%
+  group_by(month) %>% summarise(
+    Percent_Advocate = mean(advocate)*100,
+    Percent_Pathway = mean(agile_md_used_num)*100,
+    Percent_Sane = mean(did_SANE_kit)*100
+  ) %>% gather(key = "Metric", value = "Percent", -month)
+
+month_line_df %>% ggplot(aes(x = month, y = Percent, color = Metric)) + geom_point() + geom_path() 
+
+quarter_line_df <-
+  pp.cohort.2 %>% mutate(
+    quarter = ceiling_date(arrive_dt, unit = "quarter"),
+    advocate = case_when(
+      advocate_offered == "Advocate Offered" ~ 1,
+      advocate_offered == "No Documentation of Pt Advocate" ~ 0,
+      .default = NA
+    ),
+    did_SANE_kit = if_else(sane_kit_YN == "Yes", 1, 0)
+  ) %>%
+  group_by(quarter) %>% summarise(
+    Percent_Advocate = mean(advocate),
+    Percent_Pathway = mean(agile_md_used_num),
+    Percent_Sane = mean(did_SANE_kit)
+  ) %>% gather(key = "Metric", value = "Percent", -quarter) %>% filter(Percent !=0)
+
+quarter_percent_plot<- quarter_line_df %>% ggplot(aes(x = quarter, y = Percent, color = Metric)) + geom_point() + geom_path() + theme_minimal() + scale_fill_brewer(palette = "Set1") + scale_y_continuous(labels = scales::percent) + ylim(0, 1) + geom_vline(xintercept = pathway_start, color = "black", linetype= 'longdash') + geom_vline(xintercept = sb_start, color= "darkgrey", linetype= 'longdash')
+quarter_percent_plot
+```
+
+
+
+### Percent pathway utilization over time
 ```{r}
 time_graph_1 <- all_pts %>% mutate(month = floor_date(arrive_dt, "month")) %>% ggplot() + geom_bar(mapping = aes(x = month, fill = pathway)) + theme_minimal() + scale_fill_brewer(palette = "Set1")
 time_graph_1
@@ -481,5 +547,17 @@ ppm <- all_pts %>% mutate(month = floor_date(arrive_dt, "month")) %>% group_by(m
 ppm %>% ggplot() + geom_col(aes(x = month, y = visits, fill = visit_type)) + geom_borderline(aes(x = month, y = percent.path), color = "#377EB8", bordercolour = "grey", borderwidth = 0.25) + labs(title = "Patients per month", y = "Number of visits", x= "Month", fill = "Pathway") + theme_minimal() + scale_fill_brewer(palette = "Set1") + scale_y_continuous(sec.axis=sec_axis(~.*0.01, name="Percent of Visits with Pathway Used", labels=scales::percent))
 ppq <- all_pts %>% mutate(quarter = floor_date(arrive_dt, "quarter")) %>% group_by(quarter) %>% summarise(n = n(), pathway = sum(agile_md_used_num), percent.path = 100*(sum(agile_md_used_num)/n())) %>% mutate(no_pathway = n - pathway) %>% select(-n) %>%  gather(key = "visit_type", value = "visits", -quarter, -percent.path)
 ppq %>% ggplot() + geom_col(aes(x = quarter, y = visits, fill = visit_type)) + geom_borderline(aes(x = quarter, y = percent.path), color = "#377EB8", bordercolour = "grey", borderwidth = 0.25) + labs(title = "Patients per quarter", y = "Number of visits", x= "quarter", fill = "Pathway") + theme_minimal() + scale_fill_brewer(palette = "Set1") + scale_y_continuous(sec.axis=sec_axis(~.*0.01, name="Percent of Visits with Pathway Used", labels=scales::percent))
+```
+
+## Supplement
+```{r excluded patients}
+all_excluded<-all_pts %>% filter(age > 18) %>% filter(!is.na(exclude) | sane_kit_done == 4 | between == 1) %>% mutate(reason_to_exclude = case_when(
+  between == 1 ~ 7,
+  is.na(reason_to_exclude) ~ 6,
+  .default = reason_to_exclude)) %>% add_value_labels(reason_to_exclude = c( "Seen earlier" = 1 , "Patient reports not being assaulted" = 2, "Psych" = 3, "not excluded" = 4, "Eloped" = 5, "NA/Not Listed" = 6, "Between Period" = 7)) %>% to_factor()
+
+excluded_plot <- all_excluded %>% filter(between == 0) %>%  ggplot(aes(x = reason_to_exclude)) + geom_bar(fill = "darkred") + geom_text(stat='count', aes(label=..count..), vjust=-1) + theme_minimal()
+all_excluded
+
 ```
 
