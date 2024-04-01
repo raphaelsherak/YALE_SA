@@ -1,5 +1,5 @@
 ---
-title: "SA Paper 1 Analysis"
+title: "SA Paper 1 Analysis- Pre pathway v. No Pathway edition"
 output:
   pdf_document:
     toc: yes
@@ -269,7 +269,11 @@ cat(" ",
 rm(n_excluded, number_of_minors, n_between)
 cohort.1 <-
   all_pts %>% filter(ed_arrival_date > sb_start) %>% filter(age > 17) %>% filter(is.na(exclude)) %>% mutate(exposure.tab = pathway)
+```
 
+creating a pre v no pathway cohort
+```{r}
+pp.cohort.2 <- pp.cohort.1 %>% filter(agile_md_used_num != 1)
 ```
 
 942 patient encounters from 2019-12-31 to 2022-12-24  
@@ -411,6 +415,15 @@ tbl.all.adv <- tbl_merge(list(tbl.reg.pp.adv, tbl.reg.path.adv), tab_spanner = c
 tbl.all.adv
 ```
 
+#### Additional pre v post no path
+```{r}
+pp.cohort.2 <- pp.cohort.2 %>% mutate(exposure = exposure.num) %>% set_variable_labels(sane_ED = "ED with SANE program")
+tbl.reg.prepp.adv <-advocate.regression(pp.cohort.2, pp.cohort.2$exposure)
+tbl.reg.prepp.adv
+tbl.all.adv <- tbl_merge(list(tbl.reg.pp.adv, tbl.reg.path.adv, tbl.reg.prepp.adv), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**", "Pre v. No Pathway")) %>% as_gt() %>% tab_header("Odds of documentation of offering call to PT advocate")
+tbl.all.adv
+```
+
 Patients Under 120 Hours:
 
 ```{r under 120 regression, echo=FALSE}
@@ -446,6 +459,15 @@ pp.off.sk<-sane.off.reg(fe.pp.u120, fe.pp.u120$exposure)
 path.off.sk<-sane.off.reg(fe.path.u120, fe.path.u120$exposure)
 table.reg.offsk<- tbl_merge(list(pp.off.sk, path.off.sk), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of Offering SANE Kit if <120hr")
 table.reg.offsk
+```
+
+#### Additional pre v post no path
+```{r}
+fe.prepp.u120 <-pp.u120 %>% mutate(sane_kit_offered = if_else(sane_kit_done == 0, "No", "Offered")) %>%  filter(female == 1 & english ==1) %>% filter(agile_md_used_num != 1)
+fe.prepp.u120$sane_kit_offered <- as_factor(fe.prepp.u120$sane_kit_offered)
+fe.prepp.u120$sane_kit_offered <- relevel(fe.prepp.u120$sane_kit_offered, ref = "No")
+prepp.off.sk<-sane.off.reg(fe.prepp.u120, fe.prepp.u120$exposure)
+prepp.off.sk
 ```
 
 SANE Kit Done?
@@ -491,6 +513,18 @@ primary.results.120.sk<-f.advocate.regression(pathway.u120.sk, pathway.u120.sk$e
 table.reg.sk120 <- tbl_merge(list(pp.primary.results.120.sk, primary.results.120.sk), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of documentation of offering call to PT advocate if SANE Kit Done")
 table.reg.sk120
 ```
+
+#### Additional Pre vs No Path
+
+```{r}
+prepp.u120.sk <- pp.cohort.1 %>%  filter(under120h == TRUE, sane_kit_YN == "Yes", female == 1, english == 1, agile_md_used_num != 1)
+preppp.primary.results.120.sk<-f.advocate.regression(prepp.u120.sk, prepp.u120.sk$exposure)
+preppp.primary.results.120.sk
+
+table.reg.sk120.prepp <- tbl_merge(list(pp.primary.results.120.sk, primary.results.120.sk, preppp.primary.results.120.sk), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**", "Pre v. No Pathway")) %>% as_gt() %>% tab_header("Odds of documentation of offering call to PT advocate if SANE Kit Done")
+table.reg.sk120.prepp
+```
+
 #### Terteriary Outcome: _Advocate Contacted/Offerred *IF* SANE Kit **Offered** (restricted to English speaking female patients)_
 
 ```{r}
@@ -525,6 +559,15 @@ table.reg.pregtest <- tbl_merge(list(preg.test.pp, preg.test.path), tab_spanner 
 table.reg.pregtest
 
 ```
+#### Additional Pre vs No Path
+```{r}
+preg.test.prepp<-pp.u120 %>% filter(female == 1, age <= 55, agile_md_used_num != 1) %>% preg.test.reg(., .$exposure)
+preg.test.prepp
+table.reg.pregtest.prepp <- tbl_merge(list(preg.test.pp, preg.test.path, preg.test.prepp), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**", "Pre v. No Pathway")) %>% as_gt() %>% tab_header("Odds of Pregnancy Test Ordered (if =/<55 & <120 hrs)")
+table.reg.pregtest.prepp
+```
+
+
 Pregnancy prophylaxis ordered?
 
 ```{r preg pep table}
@@ -600,19 +643,19 @@ quarter_percent_plot
 
 ### Percent pathway utilization over time
 ```{r}
-time_graph_1 <- all_pts %>% mutate(month = floor_date(arrive_dt, "month")) %>% ggplot() + geom_bar(mapping = aes(x = month, fill = pathway)) + theme_minimal() + scale_fill_brewer(palette = "Set1")
-time_graph_1
+time_graph_1 <- all_pts %>% mutate(month = ceiling_date(arrive_dt, "month")) %>% ggplot() + geom_bar(mapping = aes(x = month, fill = pathway)) + theme_minimal() + scale_fill_brewer(palette = "Set1")
+time_graph_1 + geom_vline(xintercept = pathway_start, color = "black", linetype= 'longdash') + geom_vline(xintercept = sb_start, color= "darkgrey", linetype= 'longdash')
 
 ppm <- all_pts %>% mutate(month = floor_date(arrive_dt, "month")) %>% group_by(month) %>% summarise(n = n(), pathway = sum(agile_md_used_num), percent.path = 100*(sum(agile_md_used_num)/n())) %>% mutate(no_pathway = n - pathway) %>% select(-n) %>%  gather(key = "visit_type", value = "visits", -month, -percent.path)
 ppm %>% ggplot() + geom_col(aes(x = month, y = visits, fill = visit_type)) + geom_borderline(aes(x = month, y = percent.path), color = "#377EB8", bordercolour = "grey", borderwidth = 0.25) + labs(title = "Patients per month", y = "Number of visits", x= "Month", fill = "Pathway") + theme_minimal() + scale_fill_brewer(palette = "Set1") + scale_y_continuous(sec.axis=sec_axis(~.*0.01, name="Percent of Visits with Pathway Used", labels=scales::percent))
 ppq <- all_pts %>% mutate(quarter = floor_date(arrive_dt, "quarter")) %>% group_by(quarter) %>% summarise(n = n(), pathway = sum(agile_md_used_num), percent.path = 100*(sum(agile_md_used_num)/n())) %>% mutate(no_pathway = n - pathway) %>% select(-n) %>%  gather(key = "visit_type", value = "visits", -quarter, -percent.path)
-ppq %>% ggplot() + geom_col(aes(x = quarter, y = visits, fill = visit_type)) + geom_borderline(aes(x = quarter, y = percent.path), color = "#377EB8", bordercolour = "grey", borderwidth = 0.25) + labs(title = "Patients per quarter", y = "Number of visits", x= "quarter", fill = "Pathway") + theme_minimal() + scale_fill_brewer(palette = "Set1") + scale_y_continuous(sec.axis=sec_axis(~.*0.01, name="Percent of Visits with Pathway Used", labels=scales::percent))
+ppq %>% ggplot() + geom_col(aes(x = quarter, y = visits, fill = visit_type)) + geom_borderline(aes(x = quarter, y = percent.path), color = "#377EB8", bordercolour = "grey", borderwidth = 0.25) + labs(title = "Patients per quarter", y = "Number of visits", x= "quarter", fill = "Pathway") + theme_minimal() + scale_fill_brewer(palette = "Set1") + scale_y_continuous(sec.axis=sec_axis(~.*0.01, name="Percent of Visits with Pathway Used", labels=scales::percent)) 
 ```
 
 ### OR Graph
 ```{r}
-OR_Data<- read_excel("~/Documents/Current_Projects/Sexual_Assault/new_SA_YNHH/Updated YNHH SA code/OR_Table_Data.xlsx") %>% mutate(lnOR = log(OR), lnLCI = log(LCI), lnUCI=log(UCI))
-CI_Plot <- ggplot(OR_Data, aes(x = factor(Exposure), y = OR, color = factor(Exposure))) + geom_errorbar(aes(ymin =`LCI`, ymax = `UCI`), position = "dodge") + facet_wrap(vars(Measure)) + geom_hline (yintercept = 1, linetype = "dashed")
+OR_Data<- read_excel("~/Documents/Current_Projects/Sexual_Assault/new_SA_YNHH/Updated YNHH SA code/OR_Table_Data.xlsx") %>% mutate(lnOR = log(OR), lnLCI = log(LCI), lnUCI=log(UCI)) 
+CI_Plot <- ggplot(OR_Data, aes(x = factor(Exposure, ), y = OR, color = factor(Exposure))) + geom_errorbar(aes(ymin =`LCI`, ymax = `UCI`), position = "dodge") + facet_wrap(vars(Measure)) + geom_hline (yintercept = 1, linetype = "dashed")
 CI_Plot + theme_light() + guides(color = F)
 lnCI_Plot <- ggplot(OR_Data, aes(x = factor(Exposure), y = lnOR, color = factor(Exposure))) + geom_errorbar(aes(ymin =`lnLCI`, ymax = `lnUCI`), position = "dodge") + facet_wrap(vars(Measure), labeller = labeller(Measure = label_wrap_gen(50))) + geom_hline (yintercept = 0, linetype = "dashed")
 lnCI_Plot + guides(color = F) + theme_light() + theme(axis.text.x = element_text(angle = 90), axis.title.x = element_blank())
