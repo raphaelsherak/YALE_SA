@@ -36,6 +36,12 @@ all_pts <-
     "~/Documents/Current_Projects/Sexual_Assault/new_SA_YNHH/Updated YNHH SA code/SA_pts_reformatted.csv"
   )
 all_pts <- left_join(all_pts, epicdata, by = "pat_enc_csn_id")
+# updates pts with erroneous NAs in reason to exclude. Manually coded by DY 2/29/2024 and sent as CSV. 
+u_reason_exclude <- read_csv("~/Documents/Current_Projects/Sexual_Assault/new_SA_YNHH/Updated YNHH SA code/Why_Excluded")
+update_pts_CSN<-u_reason_exclude$pat_enc_csn_id
+u_reason_exclude <- u_reason_exclude %>% select(pat_enc_csn_id, reason_to_exclude)
+# replaces erroneous NAs for 15 patients
+all_pts <- left_join(all_pts, u_reason_exclude, suffix = c(".x", ".y"))
 # set TZ to east coast standard
 time_zone <- "America/New_York"
 #pathway went live on 7/13/21
@@ -615,7 +621,7 @@ OR_Data<- read_excel("~/Documents/Current_Projects/Sexual_Assault/new_SA_YNHH/Up
 CI_Plot <- ggplot(OR_Data, aes(x = factor(Exposure), y = OR, color = factor(Exposure))) + geom_errorbar(aes(ymin =`LCI`, ymax = `UCI`), position = "dodge") + facet_wrap(vars(Measure)) + geom_hline (yintercept = 1, linetype = "dashed")
 CI_Plot + theme_light() + guides(color = F)
 lnCI_Plot <- ggplot(OR_Data, aes(x = factor(Exposure), y = lnOR, color = factor(Exposure))) + geom_errorbar(aes(ymin =`lnLCI`, ymax = `lnUCI`), position = "dodge") + facet_wrap(vars(Measure), labeller = labeller(Measure = label_wrap_gen(50))) + geom_hline (yintercept = 0, linetype = "dashed")
-lnCI_Plot + guides(color = F) + theme_light() + theme(axis.text.x = element_text(angle = 90), axis.title.x = element_blank())
+lnCI_Plot + guides(color = F) + theme_light() + theme(axis.text.x = element_text(angle = 90), axis.title.x = element_blank()) 
 
 ```
 ## Supplement
