@@ -376,9 +376,9 @@ hiv.pep.reg<-function(data, exposure){
 pathway.u72 <- cohort.1 %>% filter(u72 == 1)
 pp.u72 <- pp.cohort.1 %>% filter(u72 == 1)
 prenp.u72 <- pp.cohort.2 %>% filter(u72 == 1)
-
 tbl.pep.pp <- hiv.pep.reg(pp.u72, pp.u72$exposure)
 tbl.pep.path <- hiv.pep.reg(pathway.u72, pathway.u72$exposure)
+#### WARNING. Non-convirgence for no path vs pre. has to do with zero cell in ipv variable. does it matter?
 tbl.pep.prenp <- hiv.pep.reg(prenp.u72, prenp.u72$exposure)
 tbl.pep.hiv <- tbl_merge(list(tbl.pep.pp, tbl.pep.path, tbl.pep.prenp), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**", "**Pre v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of Receiving HIV PEP if Presented to ED <72 Hours Since Assault")
 tbl.pep.hiv
