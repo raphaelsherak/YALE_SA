@@ -1,0 +1,233 @@
+---
+title: "SA Data Post-Processing"
+output: html_notebook
+---
+
+
+```{r Initial Data and Package Prep, message=FALSE, warning=FALSE, include=FALSE}
+
+library(readr)
+library(logistf)
+library(tidyverse)
+library(lubridate)
+library(gtsummary)
+library(gt)
+library(parsedate)
+library(janitor)
+library(labelled)
+library(parameters)
+library(survival)
+library(ggsurvfit)
+library(table1)
+library(hms)
+library(readxl)
+library(ggborderline)
+epicdata <-
+  read_excel(
+    "~/Documents/Current_Projects/Sexual_Assault/new_SA_YNHH/Updated YNHH SA code/C_F_AllPatients_2020to2023.xlsx"
+  ) %>% select(1, contains("Location")) %>% rename("pat_enc_csn_id" = "Pat Enc Csn ID...1") %>% clean_names()
+all_pts <-
+  read_csv(
+    "~/Documents/Current_Projects/Sexual_Assault/new_SA_YNHH/Updated YNHH SA code/SA_pts_reformatted.csv"
+  )
+all_pts <- left_join(all_pts, epicdata, by = "pat_enc_csn_id")
+# set TZ to east coast standard
+time_zone <- "America/New_York"
+#pathway went live on 7/13/21
+pathway_start <- mdy("7/13/21", tz = time_zone)
+#Story board notification went live on 9/8/21
+sb_start <- mdy("9/8/21", tz = time_zone)
+day.arrival.start <- hms::as_hms("03:00:00")
+night.arrival.start <- hms::as_hms("15:00:00")
+# making outcome variable for if correct STI tx: CTX, azithromycin or doxy (and flagyl if female) are ordered
+all_pts <- all_pts %>% mutate(
+  azithro_or_doxy = case_when(
+    azithromycin_ordered_num | doxycycline_ordered_num == 1 ~ 1,
+    azithromycin_ordered_num == 0 &
+      doxycycline_ordered_num == 0 ~ 0,
+    .default = 0
+  )
+) %>% mutate(
+  sti_tx = case_when(
+    gender == "Male" &
+      ceftriaxone_ordered_num == 1 & azithro_or_doxy == 1 ~ 1,
+    gender == "Male" &
+      ceftriaxone_ordered_num | azithro_or_doxy == 0  ~ 0,
+    gender == "Female" &
+      ceftriaxone_ordered_num == 1 &
+      azithro_or_doxy == 1 &
+      flagyl_or_metronidazole_ordered_num == 1 ~ 1,
+    gender == "Female" &
+      ceftriaxone_ordered_num |
+      azithro_or_doxy |
+      flagyl_or_metronidazole_ordered_num == 0 ~ 0,
+    .default = 0
+  ),
+  chem_ordered = case_when(
+    cmp_ordered_yn == "Y" | bmp_ordered_yn == "Y" ~ 1,
+    cmp_ordered_yn == "N" & bmp_ordered_yn == "N" ~ 0,
+    .default = NA
+  ),
+  abx_given = case_when(
+    ceftriaxone_ordered_num == 0 &
+      azithro_or_doxy == 0 &
+      flagyl_or_metronidazole_ordered_num == 0 ~ 0,
+    ceftriaxone_ordered_num == 1 |
+      azithro_or_doxy == 1 |
+      flagyl_or_metronidazole_ordered_num == 1 ~ 1
+  ),
+  lfts_ordered = case_when(
+    cmp_ordered_yn == "Y" | lft_ordered_yn == "Y" ~ 1,
+    cmp_ordered_yn == "N" & lft_ordered_yn == "N" ~ 0,
+    .default = NA
+  )
+) %>% mutate(
+  hiv_labs = case_when(
+    hiv_pep_kit_ordered_num == 1 &
+      chem_ordered == 1 & lfts_ordered == 1 ~ 1,
+    hiv_pep_kit_ordered_num == 1 &
+      (chem_ordered == 0 | lfts_ordered == 0) ~ 0,
+    .default = 0
+  ),
+  prevent.preg = case_when(
+    plan_b_or_levonorgestrel_ordered_num == 1 |
+      ulipristal_ordered_num == 1 ~ 1,
+    plan_b_or_levonorgestrel_ordered_num == 0 &
+      ulipristal_ordered_num == 0 ~ 0,
+    .default = NA
+  ),
+  advocate_offered = case_when(
+    patient_advocate_called == 1 |
+      patient_advocate_called == 3 ~ "Advocate Offered",
+    patient_advocate_called == 0 |
+      patient_advocate_called == 2 ~ "No Documentation of Pt Advocate",
+    .default = NA
+  ),
+  sane_kit_YN = case_when(
+    sane_kit_done == 0 ~ "No",
+    sane_kit_done == 1 ~ "Yes",
+    sane_kit_done == 2 ~ "Offered, but declined",
+    sane_kit_done == 3 ~ "Outside 120 hr Window",
+    sane_kit_done == 4 ~ "Not done due to concurrent psychiatric concerns"
+  ),
+  sane_kit_missed = case_when(
+    sane_kit_done == 0 ~ "SANE kit not done/documented",
+    sane_kit_done %in% c(1, 2, 3) ~ "SANE kit done/not indicated",
+    sane_kit_done == 4 ~ "Not done due to concurrent psychiatric concerns"
+  ),
+  sane_kit_offered = case_when(
+    sane_kit_done == 1 | sane_kit_done == 2  ~ "Sane Kit Offered",
+    sane_kit_done == 0 |
+      sane_kit_done == 3 | sane_kit_done == 4 ~ "Sane Kit Not Offered"
+  ),
+  sane_ED = if_else(discharge_location %in% c("YSC", "YSC-CIU", "SRC"), 1, 0),
+  pathway = if_else(
+    date(arrive_dt) < date(pathway_start),
+    "Didn't Use Pathway",
+    pathway
+  ),
+  agile_md_used_num = if_else(date(arrive_dt) < date(pathway_start), 0 , agile_md_used_num)
+) %>%
+  mutate(
+    tbl_sti_tx = case_when(
+      sti_tx == 1 & abx_given == 1 ~ 1,
+      sti_tx == 0 & abx_given == 1 ~ 0,
+      .default = NA
+    ),
+    tbl_prevent_hiv = case_when(
+      time_since_sexual_assault_if_number_k_is_y != 0 ~ NA,
+      time_since_sexual_assault_if_number_k_is_y == 0 &
+        hiv_pep_kit_ordered_num == 1 ~ 1,
+      time_since_sexual_assault_if_number_k_is_y == 0 &
+        hiv_pep_kit_ordered_num == 0 ~ 0
+    ),
+    tbl_hiv_labs = case_when(
+      hiv_pep_kit_ordered_num == 1 & hiv_labs == 1 ~ 1,
+      hiv_pep_kit_ordered_num == 1 & hiv_labs == 0 ~ 0,
+      .default = NA
+    ),
+    tbl_preg_test = case_when(
+      female_u55 == 1 & pregnancy_test_ordered_num == 1 ~ 1,
+      female_u55 == 1 & pregnancy_test_ordered_num == 0 ~ 0,
+      .default = NA
+    ),
+    tbl_prevent_preg = case_when(
+      female_u55 == 1 & prevent.preg == 1 ~ 1,
+      female_u55 == 1 & prevent.preg == 0 ~ 0,
+      .default = NA
+    ),
+    under120h = case_when(
+      time_since_sexual_assault_if_number_k_is_y == 0 |
+        time_since_sexual_assault_if_number_k_is_y == 1 ~ TRUE,
+      time_since_sexual_assault_if_number_k_is_y == 2 |
+        time_since_sexual_assault_if_number_k_is_y == 3 ~ FALSE,
+      .default = NA
+    ),
+    u72 = if_else(time_since_sexual_assault_if_number_k_is_y == 0, 1, 0),
+    english = case_when(
+      patient_language == "English" ~ 1,
+      is.na(patient_language) ~ NA,
+      .default = 0
+    ),
+    ambulance = if_else(method_of_arrival == 1, 1, 0),
+    relationship_with_patient = factor(
+      relationship_with_patient,
+      levels = c(0, 1, 2, 3, 4, NA),
+      labels = c(
+        "Unknown",
+        "Aqauintance",
+        "Family member",
+        "Stranger",
+        "Intimate Partner",
+        NA
+      ),
+      exclude = NULL,
+      ordered = FALSE),
+    insurance_3 = case_when(
+      insurance == "Private Insurance" ~ "Private",
+      insurance %in% c("Medicaid", "Medicare", "Sexual Assault") ~ "Public",
+      insurance == "Uninsured/Self-Pay" ~ "Uninsured"
+    ),
+    SA_insurance = if_else(insurance == "Sexual Assault", 1, 0)
+  ) %>%
+  mutate(
+    relationship_4_with_pt = case_when(
+      relationship_with_patient == "Family member" ~ "Family",
+      relationship_with_patient == "Aqauintance" ~ "Aquaintaince",
+      relationship_with_patient == "Intimate Partner" ~ "Intimate Partner",
+      relationship_with_patient == "Unknown" |
+        relationship_with_patient == "Stranger" ~ "Stranger/Unknown"
+    ),
+    intoxicated = case_when(Etoh == 1 | Drugs == 1 ~ 1,
+                            Etoh == 0 & Drugs == 0 ~ 0,
+                            .default = 0),
+    sane_advocate_offered = if_else(
+      advocate_offered == "Advocate Offered" &
+        sane_kit_offered == "Sane Kit Offered",
+      1,
+      0
+    ),
+    ipv = if_else(relationship_with_patient == "Intimate Partner", 1, 0)
+  ) %>%
+  mutate(arrive_time = as_hms(arrive_dt)) %>%
+  mutate(
+    day_night = case_when(
+      arrive_time >= day.arrival.start &
+        arrive_time <= night.arrival.start ~ "Day",
+      arrive_time < day.arrival.start |
+        arrive_time > night.arrival.start ~ "Night",
+      .default = "ERROR"
+    )
+  ) %>%
+  mutate(threeto3 = if_else(day_night == "Day", 1, 0)) %>%  #adding line to make it so patients who did not have sane kit done due to psych concerns are excluded
+  mutate(exclude = case_when(
+    exclude == 1 ~ 1,
+    sane_kit_done == 4 ~ 1,
+    is.na(exclude) ~ NA,
+    .default = NA
+  ))
+save(all_pts, file = "all_pts.RData")
+write_csv(all_pts, "SA_pts_post_process.csv")
+
+```
+
