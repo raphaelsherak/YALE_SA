@@ -192,13 +192,14 @@ tbl.one.fxn <- function(df) {
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-pp.cohort.1$exposure.tab <- factor(pp.cohort.1$exposure.tab, levels=c("Pre-intervention", "Post-intervention"))
+pp.cohort.1$exposure.tab <- factor(pp.cohort.1$exposure.tab, levels=c("Post-intervention", "Pre-intervention"))
+cohort.1$exposure.tab <- factor(cohort.1$exposure.tab, levels = c("Used Pathway", "Didn't Use Pathway"))
 pp.table.1 <- tbl.one.fxn(pp.cohort.1) %>% add_overall()
 table.1 <- tbl.one.fxn(cohort.1)
   table1 <-
     tbl_merge(
       list(pp.table.1, table.1),
-      tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")
+      tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**")
     ) %>% as_gt()
 table1
 ```
@@ -247,7 +248,7 @@ tbl.two.fxn <- function(data) {
       percent = "column",
       missing = "no",
       statistic = contains("tbl") ~ "{n}/{N_nonmiss} ({p}%)"
-    ) %>% add_p() %>% separate_p_footnotes()
+    ) %>% add_p(test = list(sane_kit_YN ~ 'fisher.test' , follow_up_at_discharge ~ 'chisq.test')) %>% separate_p_footnotes()
   return(x)
 }
 
@@ -256,10 +257,11 @@ tbl.two.fxn <- function(data) {
 ```{r tables, echo=FALSE, message=FALSE, warning=FALSE}
 pp.cohort.1$exposure.tab <- factor(pp.cohort.1$exposure.tab, levels=c("Pre-intervention", "Post-intervention"))
 pp.table.2 <-tbl.two.fxn(pp.cohort.1) %>% add_overall()
+cohort.1$exposure.tab <- factor(cohort.1$exposure.tab, levels = c("Used Pathway", "Didn't Use Pathway"))
 path.table.2 <-tbl.two.fxn(cohort.1)
  table.2 <-tbl_merge(
     list(pp.table.2, path.table.2),
-    tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**")
+    tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**")
   ) %>% as_gt()
 table.2 
 ```
@@ -293,22 +295,23 @@ tbl.all.adv
 
 ### Primary Outcome: *SANE Kit*
 
-note: restricted to pts \<120 hours from assault, no longer restricted to female (only 12 men) english speakers (only 11 non-english speaking)
+note: restricted to pts \<120 hours from assault
+no longer restricted to female (only 12 men) english speakers (only 11 non-english speaking)
 
-```{r sane kit fxns}
+```{r sane kit fxns, eval=FALSE, include=FALSE}
 sane.off.reg<-function(data, exposure){
-  model <-  logistf(sane_kit_offered ~ exposure + age + race_eth_num + ipv+ intoxicated + sane_ED, family = "binomial", data = data, flic = TRUE)
+  model <-  logistf(sane_kit_offered ~ exposure + age + race_eth_num + ipv+ intoxicated + sane_ED, family = "binomial", data = data)
   model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
   model.results <- model.results %>% modify_header(estimate = "**OR**")
   return(model.results)
 }
 ```
 
-Method: *2-Profile penalized log-likelihood*
+no longer including as outcome: Method: *2-Profile penalized log-likelihood*
 
 SANE Kit Offered?
 
-```{r Sane kit offered regression, message=FALSE, warning=FALSE}
+```{r Sane kit offered regression, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 pp.cohort.1.u120 <- pp.cohort.1 %>% filter(under120h == TRUE) %>% mutate(sane_kit_offered = if_else(sane_kit_done == 0, "No", "Offered"))
 pp.cohort.1.u120$sane_kit_offered <- as_factor(pp.cohort.1.u120$sane_kit_offered)
 pp.cohort.1.u120$sane_kit_offered <- relevel(pp.cohort.1.u120$sane_kit_offered, ref = "No")
@@ -454,13 +457,13 @@ tbl.all.fu
 
 ```{r updated CI graph}
 OR_Data<- read_excel("~/Documents/Current_Projects/Sexual_Assault/new_SA_YNHH/Updated YNHH SA code/OR_Table_Data.xlsx") %>% mutate(lnOR = log(OR), lnLCI = log(LCI), lnUCI=log(UCI))
-OR_Data <- OR_Data %>%  mutate(Measure = fct_relevel(Measure, "Antibiotics Ordered", "HIV Prophylaxis Ordered", "Pregnancy Prophylaxis Ordered", "Pregnancy Test Ordered","SANE KIT Done", "SANE Kit Offerred" ,"Advocate Offerred" )) 
-FinalArrowMsg = "Less likely                   OR                   More likely"
+OR_Data <- OR_Data %>%  mutate(Measure = fct_relevel(Measure, "Antibiotics Ordered", "HIV Prophylaxis Ordered", "Emergency Contraception Ordered", "Pregnancy Test Ordered","SANE KIT Done", "Advocate Offerred" )) 
+FinalArrowMsg = "Less likely                        OR                        More likely"
 TitleStr <-  paste("Association Between", sep = " ", collapse = NULL)
 TitleStr <- paste(TitleStr,'Exposure and ED Outcome Measures', sep = " ", collapse = NULL)
-pd <- position_dodge(width = 0.5)
+pd <- position_dodge(width = 0.6)
   p <- ggplot(OR_Data, aes(OR, Measure,group = Exposure))
-  CI_Log_Graph <- p + geom_point(position = pd,aes(shape=Exposure, color=Exposure)) + geom_errorbarh(aes(xmax = UCI, xmin = LCI, color = Exposure),height = 0.1,position = pd) + labs(x =FinalArrowMsg, y = "ED Outcome Measures",color = "Exposure", shape= "Exposure")+
+  CI_Log_Graph <- p + geom_point(position = pd,aes(shape=Exposure, color=Exposure)) + geom_errorbarh(aes(xmax = UCI, xmin = LCI, color = Exposure),height = 0.2,position = pd) + labs(x =FinalArrowMsg, y = "ED Outcome Measures",color = "Exposure", shape= "Exposure")+
     theme(
       plot.title = element_text(size=15),
       axis.title.x = element_text(size=13),
@@ -468,7 +471,7 @@ pd <- position_dodge(width = 0.5)
       plot.caption = element_text(hjust = 0, face= "italic",size=10),
       axis.line.x = element_line(arrow = grid::arrow(length = unit(0.3, "cm"),ends = "both")),
       axis.text.y = element_text(size=12),
-      axis.text.x = element_text(size=11),
+      axis.text.x = element_text(size=10),
       legend.text=element_text(size=12),
       legend.title = element_text(size = 14),
       legend.key.height=unit(1, "cm")
@@ -476,14 +479,14 @@ pd <- position_dodge(width = 0.5)
     geom_vline(xintercept = 1)  + 
     scale_x_log10() + 
     labs(caption = "Note: Horizontal lines are 95% confidence intervals")+
-    ggtitle(TitleStr) + theme(plot.title = element_text(hjust = 0.5)) +
+    ggtitle(TitleStr) + theme(plot.title = element_text(hjust = 0.5))+
     guides(color = guide_legend(reverse=TRUE),shape =guide_legend(reverse=TRUE))
 CI_Log_Graph
-
+CI_Log_Graph + scale_x_log10(limits = c(0.05, 25), n.breaks = 6)
   CI_Graph <- p + geom_point(position = pd,aes(shape=Exposure, color=Exposure)) + geom_errorbarh(aes(xmax = UCI, xmin = LCI, color = Exposure),height = 0.1,position = pd) + labs(x =FinalArrowMsg, y = "ED Outcome Measures",color = "Exposure", shape= "Exposure")+
     theme(
       plot.title = element_text(size=15),
-      axis.title.x = element_text(size=13),
+      axis.title.x = element_text(size=12, vjust = -.05),
       axis.title.y = element_text(size=14),
       plot.caption = element_text(hjust = 0, face= "italic",size=10),
       axis.line.x = element_line(arrow = grid::arrow(length = unit(0.3, "cm"),ends = "both")),
@@ -552,10 +555,18 @@ quarter_percent_plot
 
 ### Percent pathway utilization over time
 
-```{r}
-time_graph_1 <- all_pts %>% mutate(month = floor_date(arrive_dt, "month")) %>% ggplot() + geom_bar(mapping = aes(x = month, fill = pathway)) + theme_minimal() + scale_fill_brewer(palette = "Set1")
+```{r visits-over-time-month}
+time_graph_1 <- all_pts %>% mutate(month = ceiling_date(arrive_dt, "month")) %>% ggplot() + geom_bar(mapping = aes(x = month, fill = pathway)) + theme_minimal() + scale_fill_brewer(palette = "Set1") + labs(title = "Patients Per Month", y = "Number of Visits", x= "Month", fill = NULL) + geom_vline(xintercept = pathway_start, color = "black", linetype= 'longdash', alpha = 0.7)
 time_graph_1
+```
 
+```{r visits-over-time-quarter}
+time_graph_2 <- all_pts %>% mutate(quarter = ceiling_date(arrive_dt, "quarter")) %>% ggplot() + geom_bar(mapping = aes(x = quarter, fill = pathway)) + theme_minimal() + scale_fill_brewer(palette = "Set1") + labs(title = "Patients Per Quarter", y = "Number of Visits", x= "Quarter", fill = NULL) + geom_vline(xintercept = pathway_start, color = "black", linetype= 'longdash', alpha = 0.7)
+time_graph_2
+```
+
+
+```{r alternative-visits-pathway-time graphs, eval=FALSE, include=FALSE}
 ppm <- all_pts %>% mutate(month = floor_date(arrive_dt, "month")) %>% group_by(month) %>% summarise(n = n(), pathway = sum(agile_md_used_num), percent.path = 100*(sum(agile_md_used_num)/n())) %>% mutate(no_pathway = n - pathway) %>% select(-n) %>%  gather(key = "visit_type", value = "visits", -month, -percent.path)
 ppm %>% ggplot() + geom_col(aes(x = month, y = visits, fill = visit_type)) + geom_borderline(aes(x = month, y = percent.path), color = "#377EB8", bordercolour = "grey", borderwidth = 0.25) + labs(title = "Patients per month", y = "Number of visits", x= "Month", fill = "Pathway") + theme_minimal() + scale_fill_brewer(palette = "Set1") + scale_y_continuous(sec.axis=sec_axis(~.*0.01, name="Percent of Visits with Pathway Used", labels=scales::percent))
 ppq <- all_pts %>% mutate(quarter = floor_date(arrive_dt, "quarter")) %>% group_by(quarter) %>% summarise(n = n(), pathway = sum(agile_md_used_num), percent.path = 100*(sum(agile_md_used_num)/n())) %>% mutate(no_pathway = n - pathway) %>% select(-n) %>%  gather(key = "visit_type", value = "visits", -quarter, -percent.path)
@@ -563,11 +574,12 @@ ppq %>% ggplot() + geom_col(aes(x = quarter, y = visits, fill = visit_type)) + g
 ```
 
 ### OR Graph
-
-```{r}
+no longer using
+```{r alt-or-graphs, eval=FALSE, include=FALSE}
 
 CI_Plot <- ggplot(OR_Data, aes(x = factor(Exposure), y = OR, color = factor(Exposure))) + geom_errorbar(aes(ymin =`LCI`, ymax = `UCI`), position = "dodge") + facet_wrap(vars(Measure)) + geom_hline (yintercept = 1, linetype = "dashed")
-CI_Plot + theme_light() + guides(color = F) + coord_flip()
-lnCI_Plot <- ggplot(OR_Data, aes(x = factor(Exposure), y = lnOR, color = factor(Exposure))) + geom_errorbar(aes(ymin =`lnLCI`, ymax = `lnUCI`), position = "dodge") + facet_wrap(vars(Measure), labeller = labeller(Measure = label_wrap_gen(50))) + geom_hline (yintercept = 0, linetype = "dashed")
-lnCI_Plot + guides(color = F) + theme_light() + theme(axis.text.x = element_text(angle = 90), axis.title.x = element_blank()) + coord_flip()
+CI_Plot + theme_light() + guides(color = "none") + coord_flip() + labs (x = "Exposure")
+
+lnCI_Plot <- ggplot(OR_Data, aes(x = factor(Exposure), y = lnOR, color = factor(Exposure))) + geom_errorbar(aes(ymin =`lnLCI`, ymax = `lnUCI`), position = "dodge") + facet_wrap(vars(Measure), labeller = labeller(Measure = label_wrap_gen(50))) + geom_hline (yintercept = 0, linetype = "dashed") + labs (x = "Exposure")
+lnCI_Plot + guides(color = "none") + theme_light() + theme(axis.text.x = element_text(angle = 90), axis.title.x = element_blank()) + coord_flip()
 ```
