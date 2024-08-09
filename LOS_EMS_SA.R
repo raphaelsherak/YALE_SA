@@ -22,8 +22,8 @@ time_zone <- "America/New_York"
 pathway_start <- mdy("7/13/21", tz = time_zone)
 #Story board notification went live on 9/8/21
 sb_start <- mdy("9/8/21", tz = time_zone)
-day.arrival.start <- hms::as_hms("03:00:00")
-night.arrival.start <- hms::as_hms("15:00:00")
+day.arrival.start <- hms::as_hms("03:00:00") #likely Day nurse will do kit (comes in within 4 hours of arrival time)
+night.arrival.start <- hms::as_hms("15:00:00") #Unlikely for day nurse to do kit because closes to end of shift
 
 
 
@@ -196,7 +196,7 @@ time.to.dc %>% ggsurvfit(type = "risk") + labs(y = "percent discharged", x = "ho
 time.to.dc.cox.multi <- survfit2(Surv(short_LOS, status) ~ ambulance + age + injury + intox + esi_level + sane_kit_YN, data = cohort.time) 
 atf.model <- flexsurvreg(formula = Surv(short_LOS, status) ~ arrival + age + injury + intox + esi_level + sane_kit_YN, data = cohort.time, dist = "weibull")
 summary(atf.model)
-atexp(coef(atf.model))
+exp(coef(atf.model))
 tbl_regression(atf.model)
 cox.ph.model <- coxph(formula = Surv(time_hours, status) ~ arrival + age + injury + intox + esi_level + sane_kit_YN, data = cohort.time)
 summary(cox.ph.model)

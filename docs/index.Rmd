@@ -352,7 +352,7 @@ table.reg.sk <- tbl_merge(list(pp.sk.did, path.sk.did, prenp.sk.did), tab_spanne
 table.reg.sk
 ```
 
-### Secondary Outcome: *For Women =/\< 55 Presenting \< 120 Hours*
+### Secondary Outcome: *For Women =< 55 Presenting < 120 Hours*
 
 ```{r}
 preg.test.reg<-function(data, exposure){
@@ -450,6 +450,33 @@ tbl.reg.prepn.fu <-fu.reg(pp.cohort.2, pp.cohort.2$exposure)
 tbl.all.fu <- tbl_merge(list(tbl.reg.pp.fu, tbl.reg.path.fu, tbl.reg.prepn.fu), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Odds of Having Follow Up at Discharge")
 tbl.all.fu
 ```
+
+### Restricted to YSC, SRC, Shoreline
+
+```{r}
+#create cohort restricted to YSC, SRC, Shoreline (SAFE program sites)
+SAFE_Sites <- list("YSC", "SRC", "Shoreline") #note variable sane_ED was classfied as DCed from SRC/YSC/ or YSC CIU...
+
+SAFE_Site_Cohort <- pp.cohort.1 %>% 
+  filter(arrival_location %in% SAFE_Sites)
+SAFE_Site_Cohort_u120 <- SAFE_Site_Cohort %>% 
+   mutate(did_SANE_kit = if_else(sane_kit_YN == "Yes", 1, 0)) %>%
+  filter(under120h == TRUE) #383 patients u120 at SAFE sites
+
+# number of patients who had pathway used
+SAFE_Site_Cohort %>% filter(agile_md_used_num == 1) %>% nrow() %>% print()
+SAFE_Site_Cohort_u120 %>% filter(agile_md_used_num == 1) %>% nrow() %>% print()
+
+# SAFE Kit Done; restricted to u120
+tbl.reg.ss.sk.did <- sane.did.reg(SAFE_Site_Cohort_u120, SAFE_Site_Cohort_u120$exposure) %>% as_gt() %>% tab_header("Odds of Doing SAFE Kit")
+tbl.reg.ss.sk.did
+
+# advocate offered
+
+tbl.reg.ss.adv <- advocate.regression(SAFE_Site_Cohort, SAFE_Site_Cohort$exposure) %>% as_gt() %>% tab_header("Odds of Offering Advocate")
+tbl.reg.ss.adv
+```
+
 
 ## Graphs
 
