@@ -433,9 +433,8 @@ tbl.all.abx
 
 ### Tertiary Outcome: *Follow Up at Discharge?*
 
-note: race causes quasi seperation. Emailing Jim Dzuria to get his imput about best next steps.
-
-```{r follow up regression function, include=FALSE}
+note: removed outcome on 8/22/24
+```{r follow up regression function, eval=FALSE, include=FALSE}
 fu.reg<-function(data, exposure){
   model<-glm(follow_up_at_discharge ~ exposure + age + race_eth_num + ipv + intoxicated + sane_ED, family = "binomial", data = data)
   model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
@@ -451,30 +450,50 @@ tbl.all.fu <- tbl_merge(list(tbl.reg.pp.fu, tbl.reg.path.fu, tbl.reg.prepn.fu), 
 tbl.all.fu
 ```
 
-### Restricted to YSC, SRC, Shoreline
+### Restricted to YSC and SRC
 
 ```{r}
-#create cohort restricted to YSC, SRC, Shoreline (SAFE program sites)
-SAFE_Sites <- list("YSC", "SRC", "Shoreline") #note variable sane_ED was classfied as DCed from SRC/YSC/ or YSC CIU...
+#create cohort restricted to YSC and SRC (SAFE program sites)
 
 SAFE_Site_Cohort <- pp.cohort.1 %>% 
-  filter(arrival_location %in% SAFE_Sites)
+  filter(sane_ED == 1)
 SAFE_Site_Cohort_u120 <- SAFE_Site_Cohort %>% 
    mutate(did_SANE_kit = if_else(sane_kit_YN == "Yes", 1, 0)) %>%
   filter(under120h == TRUE) #383 patients u120 at SAFE sites
-
+SAFE_Site_Cohort_u120.f <- SAFE_Site_Cohort_u120 %>% filter(female_u55 == 1)
+SAFE_Site_Cohort_u72 <- SAFE_Site_Cohort %>% filter(u72 == 1)
 # number of patients who had pathway used
 SAFE_Site_Cohort %>% filter(agile_md_used_num == 1) %>% nrow() %>% print()
 SAFE_Site_Cohort_u120 %>% filter(agile_md_used_num == 1) %>% nrow() %>% print()
 
 # SAFE Kit Done; restricted to u120
-tbl.reg.ss.sk.did <- sane.did.reg(SAFE_Site_Cohort_u120, SAFE_Site_Cohort_u120$exposure) %>% as_gt() %>% tab_header("Odds of Doing SAFE Kit")
+reg.ss.sk.did <-  glm(did_SANE_kit ~ exposure + age + race_eth_num + ipv+ intoxicated, family = "binomial", data = SAFE_Site_Cohort_u120)
+tbl.reg.ss.sk.did <- tbl_regression(reg.ss.sk.did, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds of Doing SAFE Kit")
 tbl.reg.ss.sk.did
-
 # advocate offered
 
-tbl.reg.ss.adv <- advocate.regression(SAFE_Site_Cohort, SAFE_Site_Cohort$exposure) %>% as_gt() %>% tab_header("Odds of Offering Advocate")
-tbl.reg.ss.adv
+  SAFE_Site_Cohort$advocate_offered <- as_factor(SAFE_Site_Cohort$advocate_offered )
+  SAFE_Site_Cohort$advocate_offered <- relevel(SAFE_Site_Cohort$advocate_offered, ref= "No Documentation of Pt Advocate")
+  reg.ss.adv <-  glm(advocate_offered ~ exposure + age + race_eth_num + ipv+ intoxicated, family = "binomial", data = SAFE_Site_Cohort)
+  tbl.reg.ss.adv <- tbl_regression(reg.ss.adv, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds of Offering Advocate (Restricted to YSC/SRC)")
+  tbl.reg.ss.adv
+
+# pregnancy test ordered
+   reg.ss.preg <-glm(pregnancy_test_ordered_num ~ exposure + age + race_eth_num + ipv+ intoxicated, family = "binomial", data = SAFE_Site_Cohort_u120.f)
+  tbl.reg.ss.preg <- tbl_regression(reg.ss.preg, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds of Ordering Pregnancy Test (Restricted to YSC/SRC)")
+  tbl.reg.ss.preg
+# EC ordered
+  reg.ss.ec<-glm(prevent.preg ~ exposure + age + race_eth_num + ipv+ intoxicated, family = "binomial", data = SAFE_Site_Cohort_u120.f)
+  tbl.reg.ss.ec <- tbl_regression(reg.ss.ec, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds of Ordering Emergency Contraception (Restricted to YSC/SRC)")
+  tbl.reg.ss.ec
+# HIV Prophylaxis ordered
+  reg.ss.hiv <-glm(hiv_pep_kit_ordered_num ~ exposure + age + race_eth_num + ipv + intoxicated, family = "binomial", data = SAFE_Site_Cohort_u72)
+  tbl.reg.ss.hiv <- tbl_regression(reg.ss.hiv, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds of Ordering HIV PEP (Restricted to YSC/SRC)")
+  tbl.reg.ss.hiv
+# Abx ordered
+   reg.ss.abx <-glm(abx_given ~ exposure + age + race_eth_num + ipv + intoxicated, family = "binomial", data = SAFE_Site_Cohort)
+  tbl.reg.ss.abx <- tbl_regression(reg.ss.abx, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds of Ordering Antibiotics (Restricted to YSC/SRC)")
+  tbl.reg.ss.abx
 ```
 
 
@@ -489,8 +508,8 @@ FinalArrowMsg = "Less likely                        OR                        Mo
 TitleStr <-  paste("Association Between", sep = " ", collapse = NULL)
 TitleStr <- paste(TitleStr,'Exposure and ED Outcome Measures', sep = " ", collapse = NULL)
 pd <- position_dodge(width = 0.6)
-  p <- ggplot(OR_Data, aes(OR, Measure,group = Exposure))
-  CI_Log_Graph <- p + geom_point(position = pd,aes(shape=Exposure, color=Exposure)) + geom_errorbarh(aes(xmax = UCI, xmin = LCI, color = Exposure),height = 0.2,position = pd) + labs(x =FinalArrowMsg, y = "ED Outcome Measures",color = "Exposure", shape= "Exposure")+
+  p <- ggplot(OR_Data, aes(OR, Measure, group = Exposure))
+  CI_Log_Graph <- p + geom_point(position = pd, aes(shape=Exposure, color=Exposure)) + geom_errorbarh(aes(xmax = UCI, xmin = LCI, color = Exposure),height = 0.2,position = pd) + labs(x =FinalArrowMsg, y = "ED Outcome Measures",color = "Exposure", shape= "Exposure")+
     theme(
       plot.title = element_text(size=15),
       axis.title.x = element_text(size=13),
@@ -530,6 +549,16 @@ CI_Log_Graph + scale_x_log10(limits = c(0.05, 25), n.breaks = 6)
 
 CI_Graph
 ```
+
+CI Graph for Post V. Pre for SAFE Sites (defined as YSC or SRC discharge)
+
+```{r CI graph SAFE SITES}
+SAFE_SITE_OR_Data <- read_excel("~/Documents/Current_Projects/Sexual_Assault/new_SA_YNHH/Updated YNHH SA code/SAFE_SITE_OR_Data.xlsx")
+
+ggplot(SAFE_SITE_OR_Data, aes(OR, Measure)) + geom_errorbar(aes(xmax = UCI, xmin = LCI), color = "blue", height = 0.1) + geom_vline(xintercept = 1) + geom_point(shape = "square") + scale_x_log10() + ggtitle("CI Graph for Post V. Pre for SAFE Sites")+ scale_x_log10(limits = c(0.05, 25), n.breaks = 6)
+
+```
+
 
 ### Percent pathway, sane kit done and advocate offered over time
 
