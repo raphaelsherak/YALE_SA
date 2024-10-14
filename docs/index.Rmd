@@ -311,6 +311,22 @@ no longer including as outcome: Method: *2-Profile penalized log-likelihood*
 
 SANE Kit Offered?
 
+```{r}
+pp.cohort.1.u120 <- pp.cohort.1 %>% filter(under120h == TRUE) %>% mutate(sane_kit_offered = if_else(sane_kit_done == 0, "No", "Offered"))
+pp.cohort.1.u120$sane_kit_offered <- as_factor(pp.cohort.1.u120$sane_kit_offered)
+pp.cohort.1.u120$sane_kit_offered <- relevel(pp.cohort.1.u120$sane_kit_offered, ref = "No")
+pp.cohort.1.u120 <- pp.cohort.1 %>% filter(under120h == TRUE) %>% mutate(sane_kit_offered = if_else(sane_kit_done == 0, "No", "Offered"))
+pp.cohort.1.u120$sane_kit_offered <- as_factor(pp.cohort.1.u120$sane_kit_offered)
+pp.cohort.1.u120$sane_kit_offered <- relevel(pp.cohort.1.u120$sane_kit_offered, ref = "No")
+pp.cohort.2.u120 <- pp.cohort.2 %>% filter(under120h == TRUE) %>% mutate(sane_kit_offered = if_else(sane_kit_done == 0, "No", "Offered"))
+pp.cohort.2.u120$sane_kit_offered <- as_factor(pp.cohort.2.u120$sane_kit_offered)
+pp.cohort.2.u120$sane_kit_offered <- relevel(pp.cohort.2.u120$sane_kit_offered, ref = "No")
+path.u120 <- cohort.1 %>% filter(under120h == TRUE) %>% mutate(sane_kit_offered = if_else(sane_kit_done == 0, "No", "Offered"))
+path.u120$sane_kit_offered <- as_factor(path.u120$sane_kit_offered)
+path.u120$sane_kit_offered <- relevel(path.u120$sane_kit_offered, ref = "No")
+```
+
+
 ```{r Sane kit offered regression, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 pp.cohort.1.u120 <- pp.cohort.1 %>% filter(under120h == TRUE) %>% mutate(sane_kit_offered = if_else(sane_kit_done == 0, "No", "Offered"))
 pp.cohort.1.u120$sane_kit_offered <- as_factor(pp.cohort.1.u120$sane_kit_offered)
@@ -468,7 +484,7 @@ SAFE_Site_Cohort_u120 %>% filter(agile_md_used_num == 1) %>% nrow() %>% print()
 
 # SAFE Kit Done; restricted to u120
 reg.ss.sk.did <-  glm(did_SANE_kit ~ exposure + age + race_eth_num + ipv+ intoxicated, family = "binomial", data = SAFE_Site_Cohort_u120)
-tbl.reg.ss.sk.did <- tbl_regression(reg.ss.sk.did, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds of Doing SAFE Kit")
+tbl.reg.ss.sk.did <- tbl_regression(reg.ss.sk.did, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds of Doing SAFE Kit (Restricted to YSC/SRC)")
 tbl.reg.ss.sk.did
 # advocate offered
 
@@ -503,7 +519,7 @@ tbl.reg.ss.sk.did
 
 ```{r updated CI graph}
 OR_Data<- read_excel("~/Documents/Current_Projects/Sexual_Assault/new_SA_YNHH/Updated YNHH SA code/OR_Table_Data.xlsx") %>% mutate(lnOR = log(OR), lnLCI = log(LCI), lnUCI=log(UCI))
-OR_Data <- OR_Data %>%  mutate(Measure = fct_relevel(Measure, "Antibiotics Ordered", "HIV Prophylaxis Ordered", "Emergency Contraception Ordered", "Pregnancy Test Ordered","SANE KIT Done", "Advocate Offerred" )) 
+OR_Data <- OR_Data %>%  mutate(Measure = fct_relevel(Measure, "Antibiotics Ordered", "HIV Prophylaxis Ordered", "Emergency Contraception Ordered", "Pregnancy Test Ordered","SAFE Kit Done", "Advocate Offerred" )) 
 FinalArrowMsg = "Less likely                        OR                        More likely"
 TitleStr <-  paste("Association Between", sep = " ", collapse = NULL)
 TitleStr <- paste(TitleStr,'Exposure and ED Outcome Measures', sep = " ", collapse = NULL)
