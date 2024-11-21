@@ -1,6 +1,10 @@
 ---
 title: "SA Paper 1 Analysis"
 output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    toc: yes
   html_document: 
     toc: yes
     theme: journal
@@ -9,10 +13,6 @@ output:
     fig_width: 9
     fig_height: 6
     df_print: default
-  html_notebook:
-    toc: yes
-  pdf_document:
-    toc: yes
   word_document:
     toc: yes
 ---
@@ -292,13 +292,34 @@ tbl.reg.prepn.adv <-advocate.regression(pp.cohort.2, pp.cohort.2$exposure)
 tbl.all.adv <- tbl_merge(list(tbl.reg.pp.adv, tbl.reg.path.adv, tbl.reg.prepn.adv), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Odds of documentation of offering call to PT advocate")
 tbl.all.adv
 ```
+#### Unadjusted Odds of Offering to Contact Advocate
+
+```{r unadjusted advocate regression function}
+ua.advocate.regression<-function(data, exposure){
+  data$advocate_offered <- as_factor(data$advocate_offered )
+  data$advocate_offered <- relevel(data$advocate_offered, ref= "No Documentation of Pt Advocate")
+  model <-  glm(advocate_offered ~ exposure, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+```
+
+```{r}
+
+ua.tbl.reg.path.adv <-ua.advocate.regression(cohort.1, cohort.1$exposure)
+ua.tbl.reg.pp.adv <-ua.advocate.regression(pp.cohort.1, pp.cohort.1$exposure)
+ua.tbl.reg.prepn.adv <-ua.advocate.regression(pp.cohort.2, pp.cohort.2$exposure)
+ua.tbl.all.adv <- tbl_merge(list(ua.tbl.reg.pp.adv, ua.tbl.reg.path.adv, ua.tbl.reg.prepn.adv), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Unadjusted Odds of documentation of offering call to PT advocate")
+ua.tbl.all.adv
+
+```
 
 ### Primary Outcome: *SANE Kit*
 
 note: restricted to pts \<120 hours from assault
 no longer restricted to female (only 12 men) english speakers (only 11 non-english speaking)
 
-```{r sane kit fxns, eval=FALSE, include=FALSE}
+```{r sane kit fxns, include=FALSE}
 sane.off.reg<-function(data, exposure){
   model <-  logistf(sane_kit_offered ~ exposure + age + race_eth_num + ipv+ intoxicated + sane_ED, family = "binomial", data = data)
   model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
@@ -308,7 +329,6 @@ sane.off.reg<-function(data, exposure){
 ```
 
 no longer including as outcome: Method: *2-Profile penalized log-likelihood*
-
 SANE Kit Offered?
 
 ```{r}
@@ -368,6 +388,23 @@ table.reg.sk <- tbl_merge(list(pp.sk.did, path.sk.did, prenp.sk.did), tab_spanne
 table.reg.sk
 ```
 
+##### Unadjusted OR for doing SAFE KIT 
+
+```{r Unadjusted OR for doing SAFE KIT}
+
+ua.pp.sk.did <- glm(did_SANE_kit ~ exposure, family = "binomial", data = pp.cohort.1.u120) %>%
+  tbl_regression(exponentiate = T)
+
+ua.prenp.sk.did <- glm(did_SANE_kit ~ exposure, family = "binomial", data = pp.cohort.2.u120) %>%
+  tbl_regression(exponentiate = T)
+
+ua.path.sk.did <- glm(did_SANE_kit ~ exposure, family = "binomial", data = path.u120) %>%
+  tbl_regression(exponentiate = T)
+
+ua.table.reg.sk <- tbl_merge(list(ua.pp.sk.did, ua.path.sk.did, ua.prenp.sk.did), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Unadjusted Odds of Doing SANE Kit if <120hrs")
+ua.table.reg.sk
+```
+
 ### Secondary Outcome: *For Women =< 55 Presenting < 120 Hours*
 
 ```{r}
@@ -405,6 +442,44 @@ table.reg.pregprev <- tbl_merge(list(preg.prev.pp, preg.prev.path, preg.prev.pre
 table.reg.pregprev
 ```
 
+#### Unadjusted Outcomes: Pregnancy Test and Prevention
+
+
+```{r}
+ua.preg.test.reg<-function(data, exposure){
+  model<-glm(pregnancy_test_ordered_num ~ exposure, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+
+ua.preg.prev.reg<-function(data, exposure){
+   model<-glm(prevent.preg ~ exposure, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+```
+
+*Unadjusted* Pregnancy test ordered?
+
+```{r ua preg test reg table}
+ua.preg.test.pp<-pp.cohort.1.u120 %>% filter(female == 1, age <= 55) %>% ua.preg.test.reg(., .$exposure)
+ua.preg.test.prenp<-pp.cohort.2.u120 %>% filter(female == 1, age <= 55) %>% ua.preg.test.reg(., .$exposure)
+ua.preg.test.path<-path.u120 %>% filter(female == 1, age <= 55) %>% ua.preg.test.reg(., .$exposure)
+ua.table.reg.pregtest <- tbl_merge(list(ua.preg.test.pp, ua.preg.test.path, ua.preg.test.prenp), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Unadjusted Odds of Pregnancy Test Ordered (if =/<55 & <120 hrs)")
+ua.table.reg.pregtest
+```
+
+*Unadjusted* Pregnancy prophylaxis ordered?
+
+```{r ua preg pep table}
+ua.preg.prev.pp<-pp.cohort.1.u120 %>% filter(female == 1, age <= 55) %>% ua.preg.prev.reg(., .$exposure)
+ua.preg.prev.prenp<-pp.cohort.2.u120 %>% filter(female == 1, age <= 55) %>% ua.preg.prev.reg(., .$exposure)
+ua.preg.prev.path<-path.u120 %>% filter(female == 1, age <= 55) %>% ua.preg.prev.reg(., .$exposure)
+ua.table.reg.pregprev <- tbl_merge(list(ua.preg.prev.pp, ua.preg.prev.path, ua.preg.prev.prenp), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**", "**Pre v. No Pathway**")) %>% as_gt() %>% tab_header("Unadjusted Odds of Pregnancy Prophylaxis Ordered (if =/<55 & <120 hrs)")
+ua.table.reg.pregprev
+```
+
+
 ### Secondary Outcome: *HIV PEP*
 
 ```{r Hiv PEP fxn}
@@ -427,6 +502,25 @@ tbl.pep.hiv <- tbl_merge(list(tbl.pep.pp, tbl.pep.path, tbl.pep.prenp), tab_span
 tbl.pep.hiv
 ```
 
+
+#### Unadjusted OR for HIV PEP
+
+```{r unadjusted HIV OR FXN}
+ua.hiv.pep.reg<-function(data, exposure){
+  model<-glm(hiv_pep_kit_ordered_num ~ exposure, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+```
+
+```{r unadjusted OR for HIV PEP}
+ua.tbl.pep.pp <- ua.hiv.pep.reg(pp.u72, pp.u72$exposure)
+ua.tbl.pep.path <- ua.hiv.pep.reg(pathway.u72, pathway.u72$exposure)
+ua.tbl.pep.prenp <- ua.hiv.pep.reg(prenp.u72, prenp.u72$exposure)
+ua.tbl.pep.hiv <- tbl_merge(list(ua.tbl.pep.pp, ua.tbl.pep.path, ua.tbl.pep.prenp), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**", "**Pre v. No Pathway**")) %>% as_gt() %>% tab_header("Unadjusted Odds of Receiving HIV PEP if Presented to ED <72 Hours Since Assault")
+ua.tbl.pep.hiv
+```
+
 ### Secondary Outcome: *ABX given*
 
 refers to any abx given, not looking at correct med/dosage
@@ -446,6 +540,25 @@ tbl.reg.prepn.abx <-abx.pep.reg(pp.cohort.2, pp.cohort.2$exposure)
 tbl.all.abx <- tbl_merge(list(tbl.reg.pp.abx, tbl.reg.path.abx, tbl.reg.prepn.abx), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Odds of Ordering Antibiotics")
 tbl.all.abx
 ```
+
+#### Unadjusted OR for abx admin
+
+```{r unadjusted abx given regression fxn}
+ua.abx.pep.reg<-function(data, exposure){
+  model<-glm(abx_given ~ exposure, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+```
+
+```{r UA OR for abx admin}
+ua.tbl.reg.path.abx <-ua.abx.pep.reg(cohort.1, cohort.1$exposure)
+ua.tbl.reg.pp.abx <-ua.abx.pep.reg(pp.cohort.1, pp.cohort.1$exposure)
+ua.tbl.reg.prepn.abx <-ua.abx.pep.reg(pp.cohort.2, pp.cohort.2$exposure)
+ua.tbl.all.abx <- tbl_merge(list(ua.tbl.reg.pp.abx, ua.tbl.reg.path.abx, ua.tbl.reg.prepn.abx), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Unadjusted Odds of Ordering Antibiotics")
+ua.tbl.all.abx
+```
+
 
 ### Tertiary Outcome: *Follow Up at Discharge?*
 
