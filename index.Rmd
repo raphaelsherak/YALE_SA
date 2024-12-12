@@ -2,18 +2,15 @@
 title: "SA Paper 1 Analysis"
 output:
   github_document:
-    toc: yes
-  html_document: 
-    toc: yes
-    theme: journal
-    keep_md: yes
-    code_folding: hide
-    fig_width: 9
-    fig_height: 6
-    df_print: default
-
+    toc: true
+    toc_depth: 3
+    fig_width: 5
+    fig_height: 5
+    dev: jpeg
 ---
-
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 ## Prep Code
 
 ```{r Initial Data and Package Prep, echo=TRUE, message=FALSE, warning=FALSE}
