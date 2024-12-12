@@ -1,0 +1,776 @@
+---
+title: "SA Paper 1 Analysis"
+output:
+  github_document:
+    toc: yes
+  html_document: 
+    toc: yes
+    theme: journal
+    keep_md: yes
+    code_folding: hide
+    fig_width: 9
+    fig_height: 6
+    df_print: default
+
+---
+
+## Prep Code
+
+```{r Initial Data and Package Prep, echo=TRUE, message=FALSE, warning=FALSE}
+library(readr)
+library(logistf)
+library(tidyverse)
+library(lubridate)
+library(gtsummary)
+library(gt)
+library(parsedate)
+library(janitor)
+library(labelled)
+library(parameters)
+library(survival)
+library(ggsurvfit)
+library(table1)
+library(hms)
+library(readxl)
+library(ggborderline)
+theme_gtsummary_journal(journal = "jama")
+theme_gtsummary_compact()
+load(
+  "~/Documents/Current_Projects/Sexual_Assault/new_SA_YNHH/Updated YNHH SA code/all_pts.RData"
+)
+# set TZ to east coast standard
+time_zone <- "America/New_York"
+#pathway went live on 7/13/21
+pathway_start <- mdy("7/13/21", tz = time_zone)
+#Story board notification went live on 9/8/21
+sb_start <- mdy("9/8/21", tz = time_zone)
+day.arrival.start <- hms::as_hms("03:00:00")
+night.arrival.start <- hms::as_hms("15:00:00")
+all_pts$insurance_3 <- as_factor(all_pts$insurance_3)
+all_pts$insurance_3 <- relevel(all_pts$insurance_3, ref = "Public")
+all_pts <- all_pts %>% mutate(
+    race_eth = case_when(
+      patient_ethnicity == "Hispanic or Latina/o/x" ~ "Hispanic or Latina/o/x",
+      patient_race == "Black or African American" ~ "Non-Hispanic Black",
+      patient_race == "White" ~ "Non-Hispanic White",
+      patient_ethnicity != "Hispanic or Latina/o/x" &
+        patient_race != "Black or African American" &
+        patient_race != "White" ~ "Other",
+      .default = patient_race
+    )
+  ) %>% 
+  mutate(
+    race_eth_num = case_when(
+      race_eth == "Non-Hispanic White" ~ 0,
+      race_eth == "Non-Hispanic Black" ~ 1,
+      race_eth == "Hispanic or Latina/o/x" ~ 3,
+      race_eth == "Other" ~ 4
+    )
+  ) %>% 
+  set_value_labels(
+    race_eth_num = c(
+      "Non-Hispanic White" = 0,
+      "Non-Hispanic Black" = 1,
+      "Hispanic or Latina/o/x" = 3,
+      "Other" = 4
+    )
+  )
+all_pts$race_eth_num <- to_factor(all_pts$race_eth_num, ordered = FALSE)
+all_excluded <- all_pts %>%
+  mutate(exclude = case_when(age < 18 ~ 1,
+                             between == 1 ~ 1,
+                             sane_kit_done == 4 ~ 1,
+                             exclude == 1 ~ 1)) %>%
+  mutate(
+    reason_to_exclude = case_when(
+      age < 18 ~ 8,
+      is.na(reason_to_exclude) & between == 1 ~ 7,
+      is.na(reason_to_exclude) & sane_kit_done == 4 ~ 3,
+      is.na(reason_to_exclude) ~ 6,
+      .default = reason_to_exclude
+    )
+  ) %>% add_value_labels(
+    reason_to_exclude = c(
+      "Seen earlier" = 1 ,
+      "Patient reports not being assaulted" = 2,
+      "Psych" = 3,
+      "not excluded" = 4,
+      "Eloped" = 5,
+      "NA/Not Listed" = 6,
+      "Between Period" = 7,
+      "Under 18 YO" = 8
+    )
+  ) %>% to_factor()
+all_excluded <- all_excluded %>% filter(exclude == 1)
+excluded_plot <-
+  all_excluded %>% ggplot(aes(x = reason_to_exclude)) + geom_bar(fill = "darkred") + geom_text(stat =
+                                                                                                 'count', aes(label = after_stat(count)), vjust = -0.5, size = 3.5) + theme_minimal() + labs(x = "Reason to Exclude", y = "Count", title = "Excluded Patients by Reason") + theme(axis.text.x = element_text(angle = 35, vjust = .6, hjust= .8))
+
+excluded_plot
+
+all_excluded %>% group_by(reason_to_exclude) %>% summarise(n = n()) %>% print()
+
+number_of_minors <-
+  all_excluded %>% filter(age < 18) #changed it so age is first exclusion criteria
+number_of_minors <-
+  n_distinct(number_of_minors$pat_enc_csn_id, na.rm = TRUE) %>% as.character()
+cat("  ", number_of_minors, "patients under 18 YO excluded")
+n_excluded <-
+  all_excluded %>% filter(
+    reason_to_exclude %in% c(
+      "Seen earlier",
+      "Patient reports not being assaulted",
+      "Psych",
+      "Eloped",
+      "NA/Not Listed"
+    )
+  )
+n_excluded <-
+  n_distinct(n_excluded$pat_enc_csn_id, na.rm = TRUE) %>% as.character()
+n_between <-
+  all_excluded %>% filter(reason_to_exclude == "Between Period")
+n_between <-
+  n_distinct(n_between$pat_enc_csn_id, na.rm = TRUE) %>% as.character()
+
+cat("-", n_excluded, "patients were excluded based on chart review.")
+cat(" ",
+    n_between,
+    "patients who arrived between 7/13/21 and 9/8/21 were excluded")
+rm(n_excluded, number_of_minors, n_between)
+#pre-post cohort
+pp.cohort.1 <-
+  all_pts %>% filter(between == 0) %>% filter(age > 17) %>% filter(is.na(exclude), sane_kit_done != 4) %>% mutate(exposure.tab = exposure.char)
+#pathway v no pathway cohort
+cohort.1 <-
+  all_pts %>% filter(ed_arrival_date > sb_start) %>% filter(age > 17) %>% filter(is.na(exclude)) %>% mutate(exposure.tab = pathway)
+#pre vs no pathway cohort
+pp.cohort.2 <- pp.cohort.1 %>% filter(agile_md_used_num != 1)
+```
+
+942 patient encounters from 2019-12-31 to 2022-12-24\
+In order of exclusion: age -\> chart review -\> between period
+
+## Table 1 and 2
+### Table 1
+```{r tbl 1 fxn, echo=FALSE, message=FALSE, warning=FALSE}
+tbl.one.fxn <- function(df) {
+  x <- df %>% select(exposure.tab,
+                     age,
+                     female,
+                     race_eth_num,
+                     under120h,
+                     u72,
+                     english,
+                     ambulance,
+                     intoxicated,
+                     Psych,
+                     ipv) %>%
+    set_variable_labels(
+      age = "Age",
+      female = "Female",
+      race_eth_num = "Race",
+      under120h = "Presented within 120h of assault",
+      u72 = "Presented within 72h of assault",
+      ambulance = "Arrived by EMS",
+      english = "English speaking",
+      ipv = "Assailant was Intimate Partner",
+      intoxicated = "Diagnosis of Intoxication",
+      Psych = "Psychiatric Diagnosis"
+    ) %>%
+    tbl_summary(
+      by = exposure.tab,
+      missing = "ifany",
+      percent = "column",
+      statistic = (age ~ "{median} ({p25}, {p75})")
+    ) %>%
+    add_p() %>% separate_p_footnotes()
+  return(x)
+}
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+pp.cohort.1$exposure.tab <- factor(pp.cohort.1$exposure.tab, levels=c("Post-intervention", "Pre-intervention"))
+cohort.1$exposure.tab <- factor(cohort.1$exposure.tab, levels = c("Used Pathway", "Didn't Use Pathway"))
+pp.table.1 <- tbl.one.fxn(pp.cohort.1) %>% add_overall()
+table.1 <- tbl.one.fxn(cohort.1)
+  table1 <-
+    tbl_merge(
+      list(pp.table.1, table.1),
+      tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**")
+    ) %>% as_gt()
+table1
+```
+#### Supplemental Table 1
+
+```{r}
+pp.cohort.2 <- pp.cohort.2 %>% mutate(exposure = exposure.num) %>% set_variable_labels(sane_ED = "ED with SANE program", race_eth_num = "Race and Ethnicity", exposure = "Exposure", age = "Age", ipv = "Assailant was Intimate Partner", intoxicated= "Intoxicated")
+
+supplment.table1 <- pp.cohort.2 %>% mutate(exposure = exposure.num) %>% mutate(exposure.tab = if_else(exposure == 0, "Pre-intervention", "No Pathway")) %>% tbl.one.fxn()
+supplment.table1
+```
+### Table 2
+```{r tbl 2 fxns, echo=FALSE, message=FALSE, warning=FALSE}
+tbl.two.fxn <- function(data) {
+  x <- data %>% mutate(
+    tbl_sane_kit_u120 = case_when(
+      under120h == TRUE & sane_kit_done == 1 ~ 1,
+      under120h == TRUE & sane_kit_done != 1 ~ 0,
+      .default = NA
+    ),advocate_off_num = case_when(
+      advocate_offered == "Advocate Offered" ~ 1,
+      advocate_offered ==  "No Documentation of Pt Advocate" ~ 0,
+      is.na(advocate_offered) ~ NA,
+      .default = NA
+    ),
+  ) %>%
+    select(
+      exposure.tab,
+      advocate_off_num,
+      abx_given,
+      tbl_prevent_hiv,
+      female_u55,
+      tbl_preg_test,
+      tbl_prevent_preg,
+      sane_ED,
+      sane_kit_YN,
+      tbl_sane_kit_u120,
+      follow_up_at_discharge
+    ) %>%
+    set_variable_labels(
+      advocate_off_num = "Documentation of advocate offerred",
+      abx_given = "PEP antibiotics ordered",
+      tbl_prevent_hiv = "HIV PEP ordered (if < 72h from assault",
+      female_u55 = "Female under 55",
+      tbl_preg_test = "Pregnancy test ordered",
+      tbl_prevent_preg = "Pregnancy prophalaxis ordered",
+      sane_ED = "ED with SANE program",
+      sane_kit_YN = "SANE kit done",
+      tbl_sane_kit_u120 = "Under 120 hours and SANE kit done",
+      follow_up_at_discharge = "Has after discharge follow up"
+    ) %>% tbl_summary(
+      by = exposure.tab,
+      percent = "column",
+      missing = "no",
+      statistic = contains("tbl") ~ "{n}/{N_nonmiss} ({p}%)"
+    ) %>% add_p(test = list(sane_kit_YN ~ 'fisher.test' , follow_up_at_discharge ~ 'chisq.test')) %>% separate_p_footnotes()
+  return(x)
+}
+
+```
+
+```{r tables, echo=FALSE, message=FALSE, warning=FALSE}
+pp.cohort.1$exposure.tab <- factor(pp.cohort.1$exposure.tab, levels=c("Pre-intervention", "Post-intervention"))
+pp.table.2 <-tbl.two.fxn(pp.cohort.1) %>% add_overall()
+cohort.1$exposure.tab <- factor(cohort.1$exposure.tab, levels = c("Used Pathway", "Didn't Use Pathway"))
+path.table.2 <-tbl.two.fxn(cohort.1)
+ table.2 <-tbl_merge(
+    list(pp.table.2, path.table.2),
+    tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**")
+  ) %>% as_gt()
+table.2 
+```
+#### Supplmenetal Table 2
+
+```{r Supplemental Table 2}
+supplment.table2 <- pp.cohort.2 %>% mutate(exposure = exposure.num) %>% mutate(exposure.tab = if_else(exposure == 0, "Pre-intervention", "No Pathway")) %>% tbl.two.fxn()
+supplment.table2
+```
+
+## Regression Outcomes
+
+### Primary Outcome: *Advocate Contacted*
+
+```{r advocate regression function}
+advocate.regression<-function(data, exposure){
+  data$advocate_offered <- as_factor(data$advocate_offered )
+  data$advocate_offered <- relevel(data$advocate_offered, ref= "No Documentation of Pt Advocate")
+  model <-  glm(advocate_offered ~ exposure + age + race_eth_num + ipv+ intoxicated + sane_ED, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+```
+
+All patients
+
+```{r regression1, echo=FALSE}
+cohort.1 <- cohort.1 %>% mutate(exposure = if_else(pathway == "Used Pathway", 1, 0)) %>% set_variable_labels(sane_ED = "ED with SANE program", race_eth_num = "Race and Ethnicity", exposure = "Exposure", age = "Age", ipv = "Assailant was Intimate Partner", intoxicated= "Intoxicated")
+pp.cohort.2 <- pp.cohort.2 %>% mutate(exposure = exposure.num) %>% set_variable_labels(sane_ED = "ED with SANE program", race_eth_num = "Race and Ethnicity", exposure = "Exposure", age = "Age", ipv = "Assailant was Intimate Partner", intoxicated= "Intoxicated")
+pp.cohort.1 <- pp.cohort.1 %>% mutate(exposure = exposure.num) %>% set_variable_labels(sane_ED = "ED with SANE program", race_eth_num = "Race and Ethnicity", exposure = "Exposure", age = "Age", ipv = "Assailant was Intimate Partner", intoxicated= "Intoxicated")
+tbl.reg.path.adv <-advocate.regression(cohort.1, cohort.1$exposure)
+tbl.reg.pp.adv <-advocate.regression(pp.cohort.1, pp.cohort.1$exposure)
+tbl.reg.prepn.adv <-advocate.regression(pp.cohort.2, pp.cohort.2$exposure)
+tbl.all.adv <- tbl_merge(list(tbl.reg.pp.adv, tbl.reg.path.adv, tbl.reg.prepn.adv), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Odds of documentation of offering call to PT advocate")
+tbl.all.adv
+```
+#### Unadjusted Odds of Offering to Contact Advocate
+
+```{r unadjusted advocate regression function}
+ua.advocate.regression<-function(data, exposure){
+  data$advocate_offered <- as_factor(data$advocate_offered )
+  data$advocate_offered <- relevel(data$advocate_offered, ref= "No Documentation of Pt Advocate")
+  model <-  glm(advocate_offered ~ exposure, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+```
+
+```{r}
+
+ua.tbl.reg.path.adv <-ua.advocate.regression(cohort.1, cohort.1$exposure)
+ua.tbl.reg.pp.adv <-ua.advocate.regression(pp.cohort.1, pp.cohort.1$exposure)
+ua.tbl.reg.prepn.adv <-ua.advocate.regression(pp.cohort.2, pp.cohort.2$exposure)
+ua.tbl.all.adv <- tbl_merge(list(ua.tbl.reg.pp.adv, ua.tbl.reg.path.adv, ua.tbl.reg.prepn.adv), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Unadjusted Odds of documentation of offering call to PT advocate")
+ua.tbl.all.adv
+
+```
+
+### Primary Outcome: *SANE Kit*
+
+note: restricted to pts \<120 hours from assault
+
+```{r sane kit fxns, include=FALSE}
+sane.off.reg<-function(data, exposure){
+  model <-  logistf(sane_kit_offered ~ exposure + age + race_eth_num + ipv+ intoxicated + sane_ED, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  model.results <- model.results %>% modify_header(estimate = "**OR**")
+  return(model.results)
+}
+```
+
+
+```{r include=FALSE}
+pp.cohort.1.u120 <- pp.cohort.1 %>% filter(under120h == TRUE) %>% mutate(sane_kit_offered = if_else(sane_kit_done == 0, "No", "Offered"))
+pp.cohort.1.u120$sane_kit_offered <- as_factor(pp.cohort.1.u120$sane_kit_offered)
+pp.cohort.1.u120$sane_kit_offered <- relevel(pp.cohort.1.u120$sane_kit_offered, ref = "No")
+pp.cohort.1.u120 <- pp.cohort.1 %>% filter(under120h == TRUE) %>% mutate(sane_kit_offered = if_else(sane_kit_done == 0, "No", "Offered"))
+pp.cohort.1.u120$sane_kit_offered <- as_factor(pp.cohort.1.u120$sane_kit_offered)
+pp.cohort.1.u120$sane_kit_offered <- relevel(pp.cohort.1.u120$sane_kit_offered, ref = "No")
+pp.cohort.2.u120 <- pp.cohort.2 %>% filter(under120h == TRUE) %>% mutate(sane_kit_offered = if_else(sane_kit_done == 0, "No", "Offered"))
+pp.cohort.2.u120$sane_kit_offered <- as_factor(pp.cohort.2.u120$sane_kit_offered)
+pp.cohort.2.u120$sane_kit_offered <- relevel(pp.cohort.2.u120$sane_kit_offered, ref = "No")
+path.u120 <- cohort.1 %>% filter(under120h == TRUE) %>% mutate(sane_kit_offered = if_else(sane_kit_done == 0, "No", "Offered"))
+path.u120$sane_kit_offered <- as_factor(path.u120$sane_kit_offered)
+path.u120$sane_kit_offered <- relevel(path.u120$sane_kit_offered, ref = "No")
+```
+
+
+```{r Sane kit offered regression, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+pp.cohort.1.u120 <- pp.cohort.1 %>% filter(under120h == TRUE) %>% mutate(sane_kit_offered = if_else(sane_kit_done == 0, "No", "Offered"))
+pp.cohort.1.u120$sane_kit_offered <- as_factor(pp.cohort.1.u120$sane_kit_offered)
+pp.cohort.1.u120$sane_kit_offered <- relevel(pp.cohort.1.u120$sane_kit_offered, ref = "No")
+pp.cohort.2.u120 <- pp.cohort.2 %>% filter(under120h == TRUE) %>% mutate(sane_kit_offered = if_else(sane_kit_done == 0, "No", "Offered"))
+pp.cohort.2.u120$sane_kit_offered <- as_factor(pp.cohort.2.u120$sane_kit_offered)
+pp.cohort.2.u120$sane_kit_offered <- relevel(pp.cohort.2.u120$sane_kit_offered, ref = "No")
+path.u120 <- cohort.1 %>% filter(under120h == TRUE) %>% mutate(sane_kit_offered = if_else(sane_kit_done == 0, "No", "Offered"))
+path.u120$sane_kit_offered <- as_factor(path.u120$sane_kit_offered)
+path.u120$sane_kit_offered <- relevel(path.u120$sane_kit_offered, ref = "No")
+pp.off.sk<-sane.off.reg(pp.cohort.1.u120, pp.cohort.1.u120$exposure)
+path.off.sk<-sane.off.reg(path.u120, path.u120$exposure)
+prenp.off.sk<-sane.off.reg(pp.cohort.2.u120, pp.cohort.2.u120$exposure) 
+#_Likelihood ratio test=13.18587 on 8 df, p=0.1056123, n=383_
+
+table.reg.offsk<- tbl_merge(list(pp.off.sk, path.off.sk, prenp.off.sk), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Odds of Offering SANE Kit if <120hr")
+table.reg.offsk
+```
+
+SANE Kit Done?
+
+```{r sane did fxn}
+sane.did.reg<-function(data, exposure){
+  model <-  glm(did_SANE_kit ~ exposure + age + race_eth_num + ipv+ intoxicated + sane_ED, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+```
+
+```{r}
+pp.cohort.1.u120 <- pp.cohort.1.u120 %>% mutate(did_SANE_kit = if_else(sane_kit_YN == "Yes", 1, 0))
+pp.cohort.2.u120 <- pp.cohort.2.u120 %>% mutate(did_SANE_kit = if_else(sane_kit_YN == "Yes", 1, 0))
+path.u120 <- path.u120 %>% mutate(did_SANE_kit = if_else(sane_kit_YN == "Yes", 1, 0))
+
+pp.sk.did <- sane.did.reg(pp.cohort.1.u120, pp.cohort.1.u120$exposure)
+prenp.sk.did <- sane.did.reg(pp.cohort.2.u120, pp.cohort.2.u120$exposure)
+path.sk.did <-sane.did.reg(path.u120, path.u120$exposure)
+table.reg.sk <- tbl_merge(list(pp.sk.did, path.sk.did, prenp.sk.did), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Odds of Doing SANE Kit if <120hrs")
+table.reg.sk
+```
+
+##### Unadjusted OR for doing SAFE KIT 
+
+```{r Unadjusted OR for doing SAFE KIT}
+
+ua.pp.sk.did <- glm(did_SANE_kit ~ exposure, family = "binomial", data = pp.cohort.1.u120) %>%
+  tbl_regression(exponentiate = T)
+
+ua.prenp.sk.did <- glm(did_SANE_kit ~ exposure, family = "binomial", data = pp.cohort.2.u120) %>%
+  tbl_regression(exponentiate = T)
+
+ua.path.sk.did <- glm(did_SANE_kit ~ exposure, family = "binomial", data = path.u120) %>%
+  tbl_regression(exponentiate = T)
+
+ua.table.reg.sk <- tbl_merge(list(ua.pp.sk.did, ua.path.sk.did, ua.prenp.sk.did), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Unadjusted Odds of Doing SANE Kit if <120hrs")
+ua.table.reg.sk
+```
+
+### Secondary Outcome: *For Women =< 55 Presenting < 120 Hours*
+
+```{r}
+preg.test.reg<-function(data, exposure){
+  model<-glm(pregnancy_test_ordered_num ~ exposure + age + race_eth_num + ipv+ intoxicated + sane_ED, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+
+preg.prev.reg<-function(data, exposure){
+   model<-glm(prevent.preg ~ exposure + age + race_eth_num + ipv+ intoxicated + sane_ED, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+```
+
+Pregnancy test ordered?
+
+```{r preg test reg table}
+preg.test.pp<-pp.cohort.1.u120 %>% filter(female == 1, age <= 55) %>% preg.test.reg(., .$exposure)
+preg.test.prenp<-pp.cohort.2.u120 %>% filter(female == 1, age <= 55) %>% preg.test.reg(., .$exposure)
+preg.test.path<-path.u120 %>% filter(female == 1, age <= 55) %>% preg.test.reg(., .$exposure)
+table.reg.pregtest <- tbl_merge(list(preg.test.pp, preg.test.path, preg.test.prenp), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Odds of Pregnancy Test Ordered (if =/<55 & <120 hrs)")
+table.reg.pregtest
+
+```
+
+Pregnancy prophylaxis ordered?
+
+```{r preg pep table}
+preg.prev.pp<-pp.cohort.1.u120 %>% filter(female == 1, age <= 55) %>% preg.prev.reg(., .$exposure)
+preg.prev.prenp<-pp.cohort.2.u120 %>% filter(female == 1, age <= 55) %>% preg.prev.reg(., .$exposure)
+preg.prev.path<-path.u120 %>% filter(female == 1, age <= 55) %>% preg.prev.reg(., .$exposure)
+table.reg.pregprev <- tbl_merge(list(preg.prev.pp, preg.prev.path, preg.prev.prenp), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**", "**Pre v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of Pregnancy Prophylaxis Ordered (if =/<55 & <120 hrs)")
+table.reg.pregprev
+```
+
+#### Unadjusted Outcomes: Pregnancy Test and Prevention
+
+
+```{r}
+ua.preg.test.reg<-function(data, exposure){
+  model<-glm(pregnancy_test_ordered_num ~ exposure, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+
+ua.preg.prev.reg<-function(data, exposure){
+   model<-glm(prevent.preg ~ exposure, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+```
+
+*Unadjusted* Pregnancy test ordered?
+
+```{r ua preg test reg table}
+ua.preg.test.pp<-pp.cohort.1.u120 %>% filter(female == 1, age <= 55) %>% ua.preg.test.reg(., .$exposure)
+ua.preg.test.prenp<-pp.cohort.2.u120 %>% filter(female == 1, age <= 55) %>% ua.preg.test.reg(., .$exposure)
+ua.preg.test.path<-path.u120 %>% filter(female == 1, age <= 55) %>% ua.preg.test.reg(., .$exposure)
+ua.table.reg.pregtest <- tbl_merge(list(ua.preg.test.pp, ua.preg.test.path, ua.preg.test.prenp), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Unadjusted Odds of Pregnancy Test Ordered (if =/<55 & <120 hrs)")
+ua.table.reg.pregtest
+```
+
+*Unadjusted* Pregnancy prophylaxis ordered?
+
+```{r ua preg pep table}
+ua.preg.prev.pp<-pp.cohort.1.u120 %>% filter(female == 1, age <= 55) %>% ua.preg.prev.reg(., .$exposure)
+ua.preg.prev.prenp<-pp.cohort.2.u120 %>% filter(female == 1, age <= 55) %>% ua.preg.prev.reg(., .$exposure)
+ua.preg.prev.path<-path.u120 %>% filter(female == 1, age <= 55) %>% ua.preg.prev.reg(., .$exposure)
+ua.table.reg.pregprev <- tbl_merge(list(ua.preg.prev.pp, ua.preg.prev.path, ua.preg.prev.prenp), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**", "**Pre v. No Pathway**")) %>% as_gt() %>% tab_header("Unadjusted Odds of Pregnancy Prophylaxis Ordered (if =/<55 & <120 hrs)")
+ua.table.reg.pregprev
+```
+
+
+### Secondary Outcome: *HIV PEP*
+
+```{r Hiv PEP fxn}
+hiv.pep.reg<-function(data, exposure){
+  model<-glm(hiv_pep_kit_ordered_num ~ exposure + age + race_eth_num + ipv + intoxicated + sane_ED, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+```
+
+```{r HIV PEP table, message=FALSE, warning=FALSE}
+pathway.u72 <- cohort.1 %>% filter(u72 == 1)
+pp.u72 <- pp.cohort.1 %>% filter(u72 == 1)
+prenp.u72 <- pp.cohort.2 %>% filter(u72 == 1)
+tbl.pep.pp <- hiv.pep.reg(pp.u72, pp.u72$exposure)
+tbl.pep.path <- hiv.pep.reg(pathway.u72, pathway.u72$exposure)
+#### WARNING. Non-convirgence for no path vs pre. has to do with zero cell in ipv variable. does it matter?
+tbl.pep.prenp <- hiv.pep.reg(prenp.u72, prenp.u72$exposure)
+tbl.pep.hiv <- tbl_merge(list(tbl.pep.pp, tbl.pep.path, tbl.pep.prenp), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**", "**Pre v. No Pathway**")) %>% as_gt() %>% tab_header("Odds of Receiving HIV PEP if Presented to ED <72 Hours Since Assault")
+tbl.pep.hiv
+```
+
+
+#### Unadjusted OR for HIV PEP
+
+```{r unadjusted HIV OR FXN}
+ua.hiv.pep.reg<-function(data, exposure){
+  model<-glm(hiv_pep_kit_ordered_num ~ exposure, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+```
+
+```{r unadjusted OR for HIV PEP}
+ua.tbl.pep.pp <- ua.hiv.pep.reg(pp.u72, pp.u72$exposure)
+ua.tbl.pep.path <- ua.hiv.pep.reg(pathway.u72, pathway.u72$exposure)
+ua.tbl.pep.prenp <- ua.hiv.pep.reg(prenp.u72, prenp.u72$exposure)
+ua.tbl.pep.hiv <- tbl_merge(list(ua.tbl.pep.pp, ua.tbl.pep.path, ua.tbl.pep.prenp), tab_spanner = c("**Pre v. Post**", "**Pathway v. No Pathway**", "**Pre v. No Pathway**")) %>% as_gt() %>% tab_header("Unadjusted Odds of Receiving HIV PEP if Presented to ED <72 Hours Since Assault")
+ua.tbl.pep.hiv
+```
+
+### Secondary Outcome: *ABX given*
+
+refers to any abx given
+
+```{r abx given regression function}
+abx.pep.reg<-function(data, exposure){
+  model<-glm(abx_given ~ exposure + age + race_eth_num + ipv + intoxicated + sane_ED, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+```
+
+```{r abx regression}
+tbl.reg.path.abx <-abx.pep.reg(cohort.1, cohort.1$exposure)
+tbl.reg.pp.abx <-abx.pep.reg(pp.cohort.1, pp.cohort.1$exposure)
+tbl.reg.prepn.abx <-abx.pep.reg(pp.cohort.2, pp.cohort.2$exposure)
+tbl.all.abx <- tbl_merge(list(tbl.reg.pp.abx, tbl.reg.path.abx, tbl.reg.prepn.abx), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Odds of Ordering Antibiotics")
+tbl.all.abx
+```
+
+#### Unadjusted OR for abx admin
+
+```{r unadjusted abx given regression fxn}
+ua.abx.pep.reg<-function(data, exposure){
+  model<-glm(abx_given ~ exposure, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+```
+
+```{r UA OR for abx admin}
+ua.tbl.reg.path.abx <-ua.abx.pep.reg(cohort.1, cohort.1$exposure)
+ua.tbl.reg.pp.abx <-ua.abx.pep.reg(pp.cohort.1, pp.cohort.1$exposure)
+ua.tbl.reg.prepn.abx <-ua.abx.pep.reg(pp.cohort.2, pp.cohort.2$exposure)
+ua.tbl.all.abx <- tbl_merge(list(ua.tbl.reg.pp.abx, ua.tbl.reg.path.abx, ua.tbl.reg.prepn.abx), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Unadjusted Odds of Ordering Antibiotics")
+ua.tbl.all.abx
+```
+
+
+### Tertiary Outcome: *Follow Up at Discharge?*
+
+note: removed outcome on 8/22/24
+```{r follow up regression function, eval=FALSE, include=FALSE}
+fu.reg<-function(data, exposure){
+  model<-glm(follow_up_at_discharge ~ exposure + age + race_eth_num + ipv + intoxicated + sane_ED, family = "binomial", data = data)
+  model.results <- tbl_regression(model, exponentiate = TRUE) %>% add_global_p()
+  return(model.results)
+}
+```
+
+```{r fu regression, eval=FALSE, include=FALSE}
+tbl.reg.path.fu <-fu.reg(cohort.1, cohort.1$exposure)
+tbl.reg.pp.fu <-fu.reg(pp.cohort.1, pp.cohort.1$exposure)
+tbl.reg.prepn.fu <-fu.reg(pp.cohort.2, pp.cohort.2$exposure)
+tbl.all.fu <- tbl_merge(list(tbl.reg.pp.fu, tbl.reg.path.fu, tbl.reg.prepn.fu), tab_spanner = c("**Post v. Pre**", "**Pathway v. No Pathway**", "**No Pathway v. Pre**")) %>% as_gt() %>% tab_header("Odds of Having Follow Up at Discharge")
+tbl.all.fu
+```
+
+### Restricted to YSC and SRC
+
+```{r}
+#create cohort restricted to YSC and SRC (SAFE program sites)
+
+SAFE_Site_Cohort <- pp.cohort.1 %>% 
+  filter(sane_ED == 1)
+SAFE_Site_Cohort_u120 <- SAFE_Site_Cohort %>% 
+   mutate(did_SANE_kit = if_else(sane_kit_YN == "Yes", 1, 0)) %>%
+  filter(under120h == TRUE) #383 patients u120 at SAFE sites
+SAFE_Site_Cohort_u120.f <- SAFE_Site_Cohort_u120 %>% filter(female_u55 == 1)
+SAFE_Site_Cohort_u72 <- SAFE_Site_Cohort %>% filter(u72 == 1)
+# number of patients who had pathway used
+SAFE_Site_Cohort %>% filter(agile_md_used_num == 1) %>% nrow() %>% print()
+SAFE_Site_Cohort_u120 %>% filter(agile_md_used_num == 1) %>% nrow() %>% print()
+
+# SAFE Kit Done; restricted to u120
+reg.ss.sk.did <-  glm(did_SANE_kit ~ exposure + age + race_eth_num + ipv+ intoxicated, family = "binomial", data = SAFE_Site_Cohort_u120)
+tbl.reg.ss.sk.did <- tbl_regression(reg.ss.sk.did, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds of Doing SAFE Kit (Restricted to YSC/SRC)")
+tbl.reg.ss.sk.did
+# advocate offered
+
+  SAFE_Site_Cohort$advocate_offered <- as_factor(SAFE_Site_Cohort$advocate_offered )
+  SAFE_Site_Cohort$advocate_offered <- relevel(SAFE_Site_Cohort$advocate_offered, ref= "No Documentation of Pt Advocate")
+  reg.ss.adv <-  glm(advocate_offered ~ exposure + age + race_eth_num + ipv+ intoxicated, family = "binomial", data = SAFE_Site_Cohort)
+  tbl.reg.ss.adv <- tbl_regression(reg.ss.adv, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds of Offering Advocate (Restricted to YSC/SRC)")
+  tbl.reg.ss.adv
+
+# pregnancy test ordered
+   reg.ss.preg <-glm(pregnancy_test_ordered_num ~ exposure + age + race_eth_num + ipv+ intoxicated, family = "binomial", data = SAFE_Site_Cohort_u120.f)
+  tbl.reg.ss.preg <- tbl_regression(reg.ss.preg, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds of Ordering Pregnancy Test (Restricted to YSC/SRC)")
+  tbl.reg.ss.preg
+# EC ordered
+  reg.ss.ec<-glm(prevent.preg ~ exposure + age + race_eth_num + ipv+ intoxicated, family = "binomial", data = SAFE_Site_Cohort_u120.f)
+  tbl.reg.ss.ec <- tbl_regression(reg.ss.ec, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds of Ordering Emergency Contraception (Restricted to YSC/SRC)")
+  tbl.reg.ss.ec
+# HIV Prophylaxis ordered
+  reg.ss.hiv <-glm(hiv_pep_kit_ordered_num ~ exposure + age + race_eth_num + ipv + intoxicated, family = "binomial", data = SAFE_Site_Cohort_u72)
+  tbl.reg.ss.hiv <- tbl_regression(reg.ss.hiv, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds of Ordering HIV PEP (Restricted to YSC/SRC)")
+  tbl.reg.ss.hiv
+# Abx ordered
+   reg.ss.abx <-glm(abx_given ~ exposure + age + race_eth_num + ipv + intoxicated, family = "binomial", data = SAFE_Site_Cohort)
+  tbl.reg.ss.abx <- tbl_regression(reg.ss.abx, exponentiate = TRUE) %>% add_global_p() %>% as_gt() %>% tab_header("Odds of Ordering Antibiotics (Restricted to YSC/SRC)")
+  tbl.reg.ss.abx
+```
+
+
+## Graphs
+
+### Updated CI Graph
+
+```{r updated CI graph}
+OR_Data<- read_excel("~/Documents/Current_Projects/Sexual_Assault/new_SA_YNHH/Updated YNHH SA code/OR_Table_Data.xlsx") %>% mutate(lnOR = log(OR), lnLCI = log(LCI), lnUCI=log(UCI))
+OR_Data <- OR_Data %>%  mutate(Measure = fct_relevel(Measure, "Antibiotics Ordered", "HIV Prophylaxis Ordered", "Emergency Contraception Ordered", "Pregnancy Test Ordered","SAFE Kit Done", "Advocate Offerred" )) 
+FinalArrowMsg = "Less likely                        OR                        More likely"
+TitleStr <-  paste("Association Between", sep = " ", collapse = NULL)
+TitleStr <- paste(TitleStr,'Exposure and ED Outcome Measures', sep = " ", collapse = NULL)
+pd <- position_dodge(width = 0.6)
+  p <- ggplot(OR_Data, aes(OR, Measure, group = Exposure))
+  CI_Log_Graph <- p + geom_point(position = pd, aes(shape=Exposure, color=Exposure)) + geom_errorbarh(aes(xmax = UCI, xmin = LCI, color = Exposure),height = 0.2,position = pd) + labs(x =FinalArrowMsg, y = "ED Outcome Measures",color = "Exposure", shape= "Exposure")+
+    theme(
+      plot.title = element_text(size=15),
+      axis.title.x = element_text(size=13),
+      axis.title.y = element_text(size=14),
+      plot.caption = element_text(hjust = 0, face= "italic",size=10),
+      axis.line.x = element_line(arrow = grid::arrow(length = unit(0.3, "cm"),ends = "both")),
+      axis.text.y = element_text(size=12),
+      axis.text.x = element_text(size=10),
+      legend.text=element_text(size=12),
+      legend.title = element_text(size = 14),
+      legend.key.height=unit(1, "cm")
+    ) +  
+    geom_vline(xintercept = 1)  + 
+    scale_x_log10() + 
+    labs(caption = "Note: Horizontal lines are 95% confidence intervals")+
+    ggtitle(TitleStr) + theme(plot.title = element_text(hjust = 0.5))+
+    guides(color = guide_legend(reverse=TRUE),shape =guide_legend(reverse=TRUE))
+CI_Log_Graph
+CI_Log_Graph + scale_x_log10(limits = c(0.05, 25), n.breaks = 6)
+  CI_Graph <- p + geom_point(position = pd,aes(shape=Exposure, color=Exposure)) + geom_errorbarh(aes(xmax = UCI, xmin = LCI, color = Exposure),height = 0.1,position = pd) + labs(x =FinalArrowMsg, y = "ED Outcome Measures",color = "Exposure", shape= "Exposure")+
+    theme(
+      plot.title = element_text(size=15),
+      axis.title.x = element_text(size=12, vjust = -.05),
+      axis.title.y = element_text(size=14),
+      plot.caption = element_text(hjust = 0, face= "italic",size=10),
+      axis.line.x = element_line(arrow = grid::arrow(length = unit(0.3, "cm"),ends = "both")),
+      axis.text.y = element_text(size=12),
+      axis.text.x = element_text(size=11),
+      legend.text=element_text(size=12),
+      legend.title = element_text(size = 14),
+      legend.key.height=unit(1, "cm")
+    ) +  
+    geom_vline(xintercept = 1)  + 
+    labs(caption = "Note: Horizontal lines are 95% confidence intervals")+
+    ggtitle(TitleStr) + theme(plot.title = element_text(hjust = 0.5)) +
+    guides(color = guide_legend(reverse=TRUE),shape =guide_legend(reverse=TRUE))
+
+CI_Graph
+```
+
+CI Graph for Post V. Pre for SAFE Sites (defined as YSC or SRC discharge)
+
+```{r CI graph SAFE SITES}
+SAFE_SITE_OR_Data <- read_excel("~/Documents/Current_Projects/Sexual_Assault/new_SA_YNHH/Updated YNHH SA code/SAFE_SITE_OR_Data.xlsx")
+
+ggplot(SAFE_SITE_OR_Data, aes(OR, Measure)) + geom_errorbar(aes(xmax = UCI, xmin = LCI), color = "blue", height = 0.1) + geom_vline(xintercept = 1) + geom_point(shape = "square") + scale_x_log10() + ggtitle("CI Graph for Post V. Pre for SAFE Sites")+ scale_x_log10(limits = c(0.05, 25), n.breaks = 6)
+
+```
+
+
+### Percent pathway, sane kit done and advocate offered over time
+
+```{r line over time graphs}
+month_line_df <-
+  pp.cohort.1 %>% mutate(
+    month = ceiling_date(arrive_dt, unit = "month"),
+    advocate = case_when(
+      advocate_offered == "Advocate Offered" ~ 1,
+      advocate_offered == "No Documentation of Pt Advocate" ~ 0,
+      .default = NA
+    ),
+    did_SANE_kit = case_when(
+      under120h == TRUE & sane_kit_done == 1 ~ 1,
+      under120h == TRUE & sane_kit_done != 1 ~ 0,
+      .default = NA
+    ),
+  ) %>%
+  group_by(month) %>% summarise(
+    Percent_Advocate = mean(advocate),
+    Percent_Pathway = mean(agile_md_used_num, na.rm = FALSE),
+    Percent_Sane = mean(did_SANE_kit, na.rm = TRUE)
+  ) %>% gather(key = "Metric", value = "Percent", -month) %>% filter(Percent !=0) %>% mutate(Metric = factor(Metric, labels = c("Percent_Advocate" = "% Advocate",  "Percent_Pathway" = "% Pathway", "Percent_Sane" = "% SAFE Kit")))
+
+month_line_df %>% ggplot(aes(x = month, y = Percent, color = Metric)) + geom_point() + geom_path() + scale_y_continuous(labels = scales::percent) + geom_vline(xintercept = pathway_start, color = "black", linetype= 'longdash') + geom_vline(xintercept = sb_start, color= "darkgrey", linetype= 'longdash') + theme_minimal()
+
+quarter_line_df <-
+  pp.cohort.1 %>% mutate(
+    quarter = ceiling_date(arrive_dt, unit = "quarter"),
+    advocate = case_when(
+      advocate_offered == "Advocate Offered" ~ 1,
+      advocate_offered == "No Documentation of Pt Advocate" ~ 0,
+      .default = NA
+    ),
+    did_SANE_kit = case_when(
+      under120h == TRUE & sane_kit_done == 1 ~ 1,
+      under120h == TRUE & sane_kit_done != 1 ~ 0,
+      .default = NA
+    )) %>%
+  group_by(quarter) %>% summarise(
+    Percent_Advocate = mean(advocate),
+    Percent_Pathway = mean(agile_md_used_num),
+    Percent_Sane = mean(did_SANE_kit, na.rm = TRUE)
+  ) %>% gather(key = "Metric", value = "Percent", -quarter) %>% filter(Percent !=0) %>% mutate(Metric = factor(Metric, labels = c("Percent_Advocate" = "% Advocate",  "Percent_Pathway" = "% Pathway", "Percent_Sane" = "% SAFE Kit")))
+
+
+quarter_percent_plot<- quarter_line_df %>% ggplot(aes(x = quarter, y = Percent, color = Metric)) + geom_point() + geom_path() + theme_minimal() + scale_fill_brewer(palette = "Set1") + scale_y_continuous(labels = scales::percent, limits=c(0,1)) + geom_vline(xintercept = pathway_start, color = "black", linetype= 'longdash') + geom_vline(xintercept = sb_start, color= "darkgrey", linetype= 'longdash')
+quarter_percent_plot + xlab("Quarter")
+```
+
+### Percent pathway utilization over time
+
+```{r visits-over-time-month}
+time_graph_1 <- all_pts %>% mutate(month = ceiling_date(arrive_dt, "month")) %>% ggplot() + geom_bar(mapping = aes(x = month, fill = pathway)) + theme_minimal() + scale_fill_brewer(palette = "Set1") + labs(title = "Patients Per Month", y = "Number of Visits", x= "Month", fill = NULL) + geom_vline(xintercept = pathway_start, color = "black", linetype= 'longdash', alpha = 0.7)
+time_graph_1
+```
+
+```{r visits-over-time-quarter}
+time_graph_2 <- all_pts %>% mutate(quarter = ceiling_date(arrive_dt, "quarter")) %>% ggplot() + geom_bar(mapping = aes(x = quarter, fill = pathway)) + theme_minimal() + scale_fill_brewer(palette = "Set1") + labs(title = "Patients Per Quarter", y = "Number of Visits", x= "Quarter", fill = NULL) + geom_vline(xintercept = pathway_start, color = "black", linetype= 'longdash', alpha = 0.7)
+time_graph_2
+```
+
+
+```{r alternative-visits-pathway-time graphs, eval=FALSE, include=FALSE}
+ppm <- all_pts %>% mutate(month = floor_date(arrive_dt, "month")) %>% group_by(month) %>% summarise(n = n(), pathway = sum(agile_md_used_num), percent.path = 100*(sum(agile_md_used_num)/n())) %>% mutate(no_pathway = n - pathway) %>% select(-n) %>%  gather(key = "visit_type", value = "visits", -month, -percent.path)
+ppm %>% ggplot() + geom_col(aes(x = month, y = visits, fill = visit_type)) + geom_borderline(aes(x = month, y = percent.path), color = "#377EB8", bordercolour = "grey", borderwidth = 0.25) + labs(title = "Patients per month", y = "Number of visits", x= "Month", fill = "Pathway") + theme_minimal() + scale_fill_brewer(palette = "Set1") + scale_y_continuous(sec.axis=sec_axis(~.*0.01, name="Percent of Visits with Pathway Used", labels=scales::percent))
+ppq <- all_pts %>% mutate(quarter = floor_date(arrive_dt, "quarter")) %>% group_by(quarter) %>% summarise(n = n(), pathway = sum(agile_md_used_num), percent.path = 100*(sum(agile_md_used_num)/n())) %>% mutate(no_pathway = n - pathway) %>% select(-n) %>%  gather(key = "visit_type", value = "visits", -quarter, -percent.path)
+ppq %>% ggplot() + geom_col(aes(x = quarter, y = visits, fill = visit_type)) + geom_borderline(aes(x = quarter, y = percent.path), color = "#377EB8", bordercolour = "grey", borderwidth = 0.25) + labs(title = "Patients per quarter", y = "Number of visits", x= "quarter", fill = "Pathway") + theme_minimal() + scale_fill_brewer(palette = "Set1") + scale_y_continuous(sec.axis=sec_axis(~.*0.01, name="Percent of Visits with Pathway Used", labels=scales::percent))
+```
+
+
+```{r alt-or-graphs, eval=FALSE, include=FALSE}
+#no longer using
+CI_Plot <- ggplot(OR_Data, aes(x = factor(Exposure), y = OR, color = factor(Exposure))) + geom_errorbar(aes(ymin =`LCI`, ymax = `UCI`), position = "dodge") + facet_wrap(vars(Measure)) + geom_hline (yintercept = 1, linetype = "dashed")
+CI_Plot + theme_light() + guides(color = "none") + coord_flip() + labs (x = "Exposure")
+
+lnCI_Plot <- ggplot(OR_Data, aes(x = factor(Exposure), y = lnOR, color = factor(Exposure))) + geom_errorbar(aes(ymin =`lnLCI`, ymax = `lnUCI`), position = "dodge") + facet_wrap(vars(Measure), labeller = labeller(Measure = label_wrap_gen(50))) + geom_hline (yintercept = 0, linetype = "dashed") + labs (x = "Exposure")
+lnCI_Plot + guides(color = "none") + theme_light() + theme(axis.text.x = element_text(angle = 90), axis.title.x = element_blank()) + coord_flip()
+```
